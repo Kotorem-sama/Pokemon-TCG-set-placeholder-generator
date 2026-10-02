@@ -10,6 +10,12 @@ class Set:
         self.card_count = card_count
         self.last_synced_at = last_synced_at
 
+    def __str__(self):
+        return f"{self.name} ({self.abbreviation})"
+
+    def __repr__(self):
+        return self.__str__()
+
     def get_dict(self) -> dict[str, int | str]:
         dictionary:dict[str, int | str] = {
             'id' : self.id,
@@ -32,6 +38,12 @@ class Card:
         self.number = number
         self.rarity = rarity
         self.card_variants = card_variants
+
+    def __str__(self):
+        return f"{self.name} ({self.number})"
+
+    def __repr__(self):
+        return self.__str__()
 
     def get_dict(self) -> dict[str , int | str | list[str]]:
         dictionary:dict[str , int | str | list[str]] = {

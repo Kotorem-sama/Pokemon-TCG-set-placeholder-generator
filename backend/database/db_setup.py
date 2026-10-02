@@ -1,4 +1,4 @@
-from sqlite3 import Connection, connect
+from sqlite3 import Connection, connect, Row
 
 class DatabaseSetup:
 
@@ -8,9 +8,10 @@ class DatabaseSetup:
     def connect_db(self) -> Connection:
         conn = connect(self.database_path)
         conn.execute("PRAGMA foreign_keys = ON")
+        conn.row_factory = Row
         return conn
         
-    def initialise_db(self, db_context:Connection) -> None:
+    def initialise_db(self, db_context:Connection) -> Connection:
         cursor = db_context.cursor()
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
@@ -47,6 +48,8 @@ class DatabaseSetup:
         )""")
 
         db_context.commit()
+        
+        return db_context
 
     def reset_db(self, db_context:Connection):
         cursor = db_context.cursor()
