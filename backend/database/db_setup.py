@@ -1,0 +1,60 @@
+from sqlite3 import Connection, connect
+
+class DatabaseSetup:
+
+    def __init__(self, database_path:str):
+        self.database_path = database_path
+
+    def connect_db(self) -> Connection:
+        conn = connect(self.database_path)
+        conn.execute("PRAGMA foreign_keys = ON")
+        return conn
+        
+    def initialise_db(self, db_context:Connection) -> None:
+        cursor = db_context.cursor()
+
+        cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        abbreviation TEXT,
+        release_date TEXT,
+        card_count INTEGER,
+        last_synced_at TEXT
+        )""")
+
+        cursor.execute("""CREATE TABLE IF NOT EXISTS cards (
+        id INTEGER PRIMARY KEY,
+        set_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        number TEXT,
+        rarity TEXT,
+        FOREIGN KEY (set_id) REFERENCES sets(id)
+        )""")
+
+        cursor.execute("""CREATE TABLE IF NOT EXISTS card_variants (
+        card_id INTEGER NOT NULL,
+        variant TEXT NOT NULL,
+        PRIMARY KEY (card_id, variant),
+        FOREIGN KEY (card_id) REFERENCES cards(id)
+        )""")
+
+        cursor.execute("""CREATE TABLE IF NOT EXISTS card_images (
+        card_id INTEGER PRIMARY KEY,
+        image_data BLOB NOT NULL,
+        content_type TEXT NOT NULL,
+        FOREIGN KEY (card_id) REFERENCES cards(id)
+        )""")
+
+        db_context.commit()
+
+    def reset_db(self, db_context:Connection):
+        cursor = db_context.cursor()
+        databases = ["card_images", "card_variants", "cards", "sets"]
+
+        for table in databases:
+            cursor.execute(f"""DROP TABLE IF EXISTS {table}""")
+
+        db_context.commit()
+        
+        self.initialise_db(db_context)
