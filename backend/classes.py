@@ -10,6 +10,18 @@ class Set:
         self.card_count = card_count
         self.last_synced_at = last_synced_at
 
+    def get_dict(self) -> dict[str, int | str]:
+        dictionary:dict[str, int | str] = {
+            'id' : self.id,
+            'name' : self.name,
+            'slug' : self.slug,
+            'abbreviation' : self.abbreviation if self.abbreviation is not None else "",
+            'release_date' : self.release_date if self.release_date is not None else "",
+            'card_count' : self.card_count if self.card_count is not None else 0,
+            'last_synced_at' : self.last_synced_at if self.last_synced_at is not None else ""
+        }
+        return dictionary
+
 class Card:
     def __init__(self, id:int, set_id:int, name:str,
                  number:str | None, rarity:str | None,
@@ -20,3 +32,14 @@ class Card:
         self.number = number
         self.rarity = rarity
         self.card_variants = card_variants
+
+    def get_dict(self) -> dict[str , int | str | list[str]]:
+        dictionary:dict[str , int | str | list[str]] = {
+            "id" : self.id,
+            "set_id" : self.set_id,
+            "name": self.name,
+            "number": self.number if self.number is not None else "",
+            "rarity": self.rarity if self.rarity is not None else "",
+            "card_variants": self.card_variants,
+        }
+        return dictionary
