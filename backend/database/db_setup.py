@@ -30,21 +30,21 @@ class DatabaseSetup:
         name TEXT NOT NULL,
         number TEXT,
         rarity TEXT,
-        FOREIGN KEY (set_id) REFERENCES sets(id)
+        FOREIGN KEY (set_id) REFERENCES sets(id) ON DELETE CASCADE
         )""")
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS card_variants (
         card_id INTEGER NOT NULL,
         variant TEXT NOT NULL,
         PRIMARY KEY (card_id, variant),
-        FOREIGN KEY (card_id) REFERENCES cards(id)
+        FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
         )""")
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS card_images (
         card_id INTEGER PRIMARY KEY,
         image_data BLOB NOT NULL,
         content_type TEXT NOT NULL,
-        FOREIGN KEY (card_id) REFERENCES cards(id)
+        FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
         )""")
 
         db_context.commit()

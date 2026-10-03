@@ -3,6 +3,40 @@ from sqlite3 import Error as db_error
 from classes import Set, Card
 
 class Set_operations:
+    def __get_set_from_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> Set | None:
+            cursor = db_context.cursor()
+    
+            cursor.execute(f"""SELECT * FROM sets WHERE {query}""", values)
+            set_row = cursor.fetchone()
+            if set_row is None:
+                return None
+            
+            return Set(set_row["id"],
+                       set_row["name"],
+                       set_row["slug"],
+                       set_row["abbreviation"],
+                       set_row["release_date"],
+                       set_row["card_count"],
+                       set_row["last_synced_at"])
+        
+    def __get_sets_from_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> list[Set]:
+        cursor = db_context.cursor()
+
+        cursor.execute(f"SELECT * FROM sets {query}", values)
+        tuple_list = cursor.fetchall()
+        set_list:list[Set] = []
+        
+        for tpl in tuple_list:
+            set_list.append(Set(tpl["id"],
+                    tpl["name"],
+                    tpl["slug"],
+                    tpl["abbreviation"],
+                    tpl["release_date"],
+                    tpl["card_count"],
+                    tpl["last_synced_at"]))
+
+        return set_list
+    
     def add_set(self, db_context: Connection, new_set: Set) -> bool:
         cursor = db_context.cursor()
 
@@ -19,60 +53,18 @@ class Set_operations:
             return False
         return True
 
-    def get_set(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> Set | None:
-        cursor = db_context.cursor()
-
-        cursor.execute("""SELECT * FROM sets WHERE """ + query, values)
-        set_row = cursor.fetchone()
-        if set_row is None:
-            return None
-        
-        return Set(set_row["id"],
-                   set_row["name"],
-                   set_row["slug"],
-                   set_row["abbreviation"],
-                   set_row["release_date"],
-                   set_row["card_count"],
-                   set_row["last_synced_at"])
-    
-    def get_all_sets(self, db_context: Connection) -> list[Set]:
-        cursor = db_context.cursor()
-
-        cursor.execute("""SELECT * FROM sets""")
-        tuple_list = cursor.fetchall()
-        set_list:list[Set] = []
-        
-        for tpl in tuple_list:
-            set_list.append(Set(tpl["id"],
-                   tpl["name"],
-                   tpl["slug"],
-                   tpl["abbreviation"],
-                   tpl["release_date"],
-                   tpl["card_count"],
-                   tpl["last_synced_at"]))
-
-        return set_list
-
     def get_sets_by_year(self, db_context: Connection, year:int) -> list[Set]:
-        cursor = db_context.cursor()
-        
-        cursor.execute("""
-            SELECT * FROM sets
-            WHERE strftime('%Y', release_date) = :year
-            """, {"year": str(year)})
-        tuple_list = cursor.fetchall()
-        set_list:list[Set] = []
-        
-        for tpl in tuple_list:
-            set_list.append(Set(tpl["id"],
-                tpl["name"],
-                tpl["slug"],
-                tpl["abbreviation"],
-                tpl["release_date"],
-                tpl["card_count"],
-                tpl["last_synced_at"]))
+        return self.__get_sets_from_query(db_context, """WHERE 
+            strftime('%Y', release_date) = :year""", {"year": str(year)})
 
-        return set_list
+    def get_all_sets(self, db_context: Connection) -> list[Set]:
+        return self.__get_sets_from_query(db_context, "", {})
+
+    def get_set_by_id(self, db_context: Connection, id:int) -> Set | None:
+        return self.__get_set_from_query(db_context, "id = :id", {"id": id})
+
+    def get_set_by_slug(self, db_context: Connection, slug:str) -> Set | None:
+        return self.__get_set_from_query(db_context, "slug = :slug", {"slug": slug})
     
     def update_set(self, db_context: Connection, updated_set: Set) -> bool:
         cursor = db_context.cursor()
@@ -112,6 +104,103 @@ class Set_operations:
             db_context.commit()
         except db_error as error:
             print(f"Failed to delete set: {error}")
+            return False
+
+        return True
+
+class Card_operations:
+    def __get_card_by_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> Card | None:
+        cursor = db_context.cursor()
+
+        cursor.execute(f"""SELECT * FROM cards WHERE {query}""", values)
+        card_row = cursor.fetchone()
+        if card_row is None:
+            return None
+        
+        return Card(card_row["id"],
+                    card_row["set_id"],
+                    card_row["name"],
+                    card_row["number"],
+                    card_row["rarity"])
+
+    def __get_cards_by_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> list[Card]:
+        cursor = db_context.cursor()
+
+        cursor.execute(f"""SELECT * FROM cards {query}""", values)
+        tuple_list = cursor.fetchall()
+        card_list:list[Card] = []
+                    
+        for tpl in tuple_list:
+            card_list.append(Card(tpl["id"],
+                tpl["set_id"],
+                tpl["name"],
+                tpl["number"],
+                tpl["rarity"]))
+
+        return card_list
+    
+    def add_card(self, db_context: Connection, new_card: Card) -> bool:
+        cursor = db_context.cursor()
+
+        try:
+            cursor.execute("""INSERT INTO cards 
+            (id, set_id, name, number, rarity)            
+            VALUES(:id, :set_id, :name, :number, :rarity)
+            """, new_card.get_dict())
+
+            db_context.commit()
+        except db_error as error:
+            print(f"Failed to insert card: {error}")
+
+            return False
+        return True
+
+    def get_all_cards(self, db_context: Connection) -> list[Card]:
+        return self.__get_cards_by_query(db_context, "", {})
+
+    def get_cards_by_set(self, db_context: Connection, set_id: int) -> list[Card]:
+        return self.__get_cards_by_query(db_context, "WHERE set_id = :set_id", {"set_id": set_id})
+
+    def get_cards_by_rarity(self, db_context: Connection, rarity: str) -> list[Card]:
+        return self.__get_cards_by_query(db_context, "WHERE rarity = :rarity", {"rarity": rarity})
+
+    def get_card_by_id(self, db_context: Connection, id:int) -> Card | None:
+        return self.__get_card_by_query(db_context, "id = :id", {"id": id})
+
+    def update_card(self, db_context: Connection, updated_card: Card) -> bool:
+        cursor = db_context.cursor()
+
+        try:
+            cursor.execute("""
+                UPDATE cards SET
+                    set_id = :set_id,
+                    name = :name,
+                    number = :number,
+                    rarity = :rarity
+                WHERE id = :id""", {
+                "id": updated_card.id,
+                "set_id": updated_card.set_id,
+                "name": updated_card.name,
+                "number": updated_card.number,
+                "rarity": updated_card.rarity
+            })
+
+            db_context.commit()
+
+        except db_error as error:
+            print(f"Failed to update card: {error}")
+            return False
+
+        return True
+
+    def delete_card(self, db_context: Connection, card_id:int) -> bool:
+        cursor = db_context.cursor()
+
+        try:
+            cursor.execute("""DELETE FROM cards WHERE id=(:id)""", {"id" : card_id})
+            db_context.commit()
+        except db_error as error:
+            print(f"Failed to delete card: {error}")
             return False
 
         return True

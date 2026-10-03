@@ -31,7 +31,7 @@ class Set:
 class Card:
     def __init__(self, id:int, set_id:int, name:str,
                  number:str | None, rarity:str | None,
-                 card_variants:list[str]):
+                 card_variants:list[str] = []):
         self.id = id
         self.set_id = set_id
         self.name = name
@@ -52,6 +52,6 @@ class Card:
             "name": self.name,
             "number": self.number if self.number is not None else "",
             "rarity": self.rarity if self.rarity is not None else "",
-            "card_variants": self.card_variants,
+            "card_variants": self.card_variants
         }
         return dictionary
