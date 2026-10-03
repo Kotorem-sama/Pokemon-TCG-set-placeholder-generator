@@ -204,3 +204,85 @@ class Card_operations:
             return False
 
         return True
+
+    # Card variant operations starts here
+    def __get_variants_by_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> list[str]:
+        cursor = db_context.cursor()
+
+        cursor.execute(query, values)
+        tuple_list = cursor.fetchall()
+        variants_list: list[str] = []
+
+        for tpl in tuple_list:
+            variants_list.append(tpl["variant"])
+
+        return variants_list
+
+    def add_variant(self, db_context: Connection, card_id:int, variant:str) -> bool:
+        cursor = db_context.cursor()
+        
+        try:
+            cursor.execute("""INSERT INTO card_variants (card_id, variant) VALUES (:card_id, :variant)""",
+                           {"card_id": card_id, "variant": variant})
+            db_context.commit()
+        except db_error as error:
+            print(f"Failed to add variant: {error}")
+            return False
+
+        return True
+
+    def get_variants(self, db_context: Connection, card_id:int) -> list[str]:
+        return self.__get_variants_by_query(db_context, "SELECT variant FROM card_variants WHERE card_id = :card_id", {"card_id": card_id})
+
+    def get_variant_types_in_set(self, db_context: Connection, set_id:int) -> list[str]:
+        return self.__get_variants_by_query(db_context, """SELECT DISTINCT variant FROM card_variants
+                                            JOIN cards ON card_variants.card_id = cards.id
+                                            WHERE cards.set_id = :set_id""", {"set_id": set_id})
+
+    def delete_variant(self, db_context: Connection, card_id:int, variant:str) -> bool:
+        cursor = db_context.cursor()
+
+        try:
+            cursor.execute("""DELETE FROM card_variants WHERE (card_id, variant)=(:card_id, :variant)""", {"card_id": card_id, "variant": variant})
+            db_context.commit()
+        except db_error as error:
+            print(f"Failed to delete variant: {error}")
+            return False
+
+        return True
+
+    # Card image operations
+    def save_image(self, db_context: Connection, card_id:int, image_data:bytes, content_type:str) -> bool:
+        cursor = db_context.cursor()
+        
+        try:
+            cursor.execute("""INSERT INTO card_images (card_id, image_data, content_type) VALUES (:card_id, :image_data, :content_type)""",
+                            {"card_id": card_id, "image_data": image_data, "content_type": content_type})
+            db_context.commit()
+        except db_error as error:
+            print(f"Failed to add image: {error}")
+            return False
+
+        return True
+
+    def get_image(self, db_context: Connection, card_id:int) -> tuple[bytes, str] | None:
+        cursor = db_context.cursor()
+        
+        cursor.execute("""SELECT * FROM card_images WHERE card_id = :card_id""", {"card_id": card_id})
+        image = cursor.fetchone()
+        if image is None:
+            return None
+        
+        return image["image_data"], image["content_type"]
+
+    def delete_image(self, db_context: Connection, card_id:int) -> bool:
+        cursor = db_context.cursor()
+        
+        try:
+            cursor.execute("""DELETE FROM card_images WHERE card_id=:card_id""", {"card_id": card_id})
+            db_context.commit()
+        except db_error as error:
+            print(f"Failed to delete image: {error}")
+            return False
+
+        return True
