@@ -1,0 +1,366 @@
+import pytest
+from sqlite3 import Connection
+from database.db_setup import DatabaseSetup
+from database.db_operations import Set_operations, Card_operations
+from classes import Set, Card
+
+
+from collections.abc import Generator
+
+@pytest.fixture
+def db_context() -> Generator[Connection, None, None]:
+    db = DatabaseSetup(":memory:")
+    connection = db.connect_db()
+    db.initialise_db(connection)
+
+    yield connection
+
+    connection.close()
+
+
+@pytest.fixture
+def set_operations() -> Set_operations:
+    return Set_operations()
+
+
+@pytest.fixture
+def card_operations() -> Card_operations:
+    return Card_operations()
+
+
+@pytest.fixture
+def test_set() -> Set:
+    return Set(
+        1,
+        "Test Set",
+        "test-set",
+        "TST",
+        "2026-01-01",
+        3,
+        None
+    )
+
+
+@pytest.fixture
+def test_card() -> Card:
+    return Card(
+        1,
+        1,
+        "Test Card",
+        "001",
+        "Common",
+        []
+    )
+
+
+# -------------------------
+# Set tests
+# -------------------------
+
+def test_add_and_get_set(db_context: Connection, set_operations: Set_operations, test_set: Set):
+    assert set_operations.add_set(db_context, test_set) is True
+
+    result = set_operations.get_set_by_id(db_context, 1)
+
+    assert result is not None
+    assert result.id == 1
+    assert result.name == "Test Set"
+    assert result.slug == "test-set"
+
+
+def test_get_set_by_slug(db_context: Connection, set_operations: Set_operations, test_set: Set):
+    set_operations.add_set(db_context, test_set)
+
+    result = set_operations.get_set_by_slug(db_context, "test-set")
+
+    assert result is not None
+    assert result.id == 1
+
+
+def test_get_sets_by_year(db_context: Connection, set_operations: Set_operations, test_set: Set):
+    set_operations.add_set(db_context, test_set)
+
+    result = set_operations.get_sets_by_year(db_context, 2026)
+
+    assert len(result) == 1
+    assert result[0].name == "Test Set"
+
+
+def test_update_set(db_context: Connection, set_operations: Set_operations, test_set: Set):
+    set_operations.add_set(db_context, test_set)
+
+    test_set.name = "Updated Set"
+
+    assert set_operations.update_set(db_context, test_set) is True
+
+    result = set_operations.get_set_by_id(db_context, 1)
+
+    assert result is not None
+    assert result.name == "Updated Set"
+
+
+def test_delete_set(db_context: Connection, set_operations: Set_operations, test_set: Set):
+    set_operations.add_set(db_context, test_set)
+
+    assert set_operations.delete_set(db_context, 1) is True
+
+    assert set_operations.get_set_by_id(db_context, 1) is None
+
+
+# -------------------------
+# Card tests
+# -------------------------
+
+def test_add_and_get_card(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+
+    assert card_operations.add_card(db_context, test_card) is True
+
+    result = card_operations.get_card_by_id(db_context, 1)
+
+    assert result is not None
+    assert result.id == 1
+    assert result.name == "Test Card"
+    assert result.number == "001"
+
+
+def test_get_cards_by_set(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    result = card_operations.get_cards_by_set(db_context, 1)
+
+    assert len(result) == 1
+    assert result[0].name == "Test Card"
+
+
+def test_get_cards_by_rarity(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    result = card_operations.get_cards_by_rarity(db_context, "Common")
+
+    assert len(result) == 1
+    assert result[0].name == "Test Card"
+
+
+def test_update_card(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    test_card.name = "Updated Card"
+
+    assert card_operations.update_card(db_context, test_card) is True
+
+    result = card_operations.get_card_by_id(db_context, 1)
+
+    assert result is not None
+    assert result.name == "Updated Card"
+
+
+def test_delete_card(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    assert card_operations.delete_card(db_context, 1) is True
+
+    assert card_operations.get_card_by_id(db_context, 1) is None
+
+
+# -------------------------
+# Variant tests
+# -------------------------
+
+def test_add_and_get_variant(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    assert card_operations.add_variant(
+        db_context,
+        1,
+        "Normal"
+    ) is True
+
+    result = card_operations.get_variants(db_context, 1)
+
+    assert result == ["Normal"]
+
+
+def test_get_variant_types_in_set(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    card_operations.add_variant(db_context, 1, "Normal")
+    card_operations.add_variant(db_context, 1, "Reverse Holofoil")
+
+    result = card_operations.get_variant_types_in_set(db_context, 1)
+
+    assert set(result) == {"Normal", "Reverse Holofoil"}
+
+
+def test_delete_variant(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    card_operations.add_variant(db_context, 1, "Normal")
+
+    assert card_operations.delete_variant(
+        db_context,
+        1,
+        "Normal"
+    ) is True
+
+    assert card_operations.get_variants(db_context, 1) == []
+
+
+# -------------------------
+# Image tests
+# -------------------------
+
+def test_save_and_get_image(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    image_data = b"fake image data"
+    content_type = "image/png"
+
+    assert card_operations.save_image(
+        db_context,
+        1,
+        image_data,
+        content_type
+    ) is True
+
+    result = card_operations.get_image(db_context, 1)
+
+    assert result is not None
+
+    stored_image, stored_content_type = result
+
+    assert stored_image == image_data
+    assert stored_content_type == content_type
+
+
+def test_get_missing_image(db_context: Connection, card_operations: Card_operations):
+    result = card_operations.get_image(db_context, 999)
+
+    assert result is None
+
+
+def test_delete_image(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    card_operations.save_image(
+        db_context,
+        1,
+        b"fake image data",
+        "image/png"
+    )
+
+    assert card_operations.delete_image(db_context, 1) is True
+
+    assert card_operations.get_image(db_context, 1) is None
+
+
+# -------------------------
+# Cascade tests
+# -------------------------
+
+def test_delete_card_cascades_variants_and_image(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    card_operations.add_variant(db_context, 1, "Normal")
+    card_operations.save_image(
+        db_context,
+        1,
+        b"fake image data",
+        "image/png"
+    )
+
+    assert card_operations.delete_card(db_context, 1) is True
+
+    assert card_operations.get_variants(db_context, 1) == []
+    assert card_operations.get_image(db_context, 1) is None
+
+
+def test_delete_set_cascades_cards(
+    db_context: Connection,
+    set_operations: Set_operations,
+    card_operations: Card_operations,
+    test_set: Set,
+    test_card: Card
+):
+    set_operations.add_set(db_context, test_set)
+    card_operations.add_card(db_context, test_card)
+
+    assert set_operations.delete_set(db_context, 1) is True
+
+    assert card_operations.get_card_by_id(db_context, 1) is None
