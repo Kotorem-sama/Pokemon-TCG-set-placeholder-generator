@@ -17,7 +17,8 @@ class Set_operations:
                        set_row["abbreviation"],
                        set_row["release_date"],
                        set_row["card_count"],
-                       set_row["last_synced_at"])
+                       set_row["last_synced_at"],
+                       set_row["last_api_sync"])
         
     def __get_sets_from_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> list[Set]:
         cursor = db_context.cursor()
@@ -33,7 +34,8 @@ class Set_operations:
                     tpl["abbreviation"],
                     tpl["release_date"],
                     tpl["card_count"],
-                    tpl["last_synced_at"]))
+                    tpl["last_synced_at"],
+                    tpl["last_api_sync"]))
 
         return set_list
     
@@ -42,9 +44,9 @@ class Set_operations:
 
         try:
             cursor.execute("""INSERT INTO sets 
-            (id, name, slug, abbreviation, release_date, card_count, last_synced_at)            
-            VALUES(:id, :name, :slug, :abbreviation, :release_date, :card_count, :last_synced_at)
-            """, new_set.get_dict())
+            (id, name, slug, abbreviation, release_date, card_count, last_synced_at, last_api_sync)            
+            VALUES(:id, :name, :slug, :abbreviation, :release_date, :card_count, :last_synced_at,
+            :last_api_sync)""", new_set.get_dict())
 
             db_context.commit()
         except db_error as error:
@@ -77,7 +79,8 @@ class Set_operations:
                     abbreviation = :abbreviation,
                     release_date = :release_date,
                     card_count = :card_count,
-                    last_synced_at = :last_synced_at
+                    last_synced_at = :last_synced_at,
+                    last_api_sync = :last_api_sync
                 WHERE id = :id""", {
                 "id": updated_set.id,
                 "name": updated_set.name,
@@ -85,7 +88,8 @@ class Set_operations:
                 "abbreviation": updated_set.abbreviation,
                 "release_date": updated_set.release_date,
                 "card_count": updated_set.card_count,
-                "last_synced_at": updated_set.last_synced_at
+                "last_synced_at": updated_set.last_synced_at,
+                "last_api_sync": updated_set.last_api_sync
             })
 
             db_context.commit()

@@ -1,7 +1,7 @@
 class Set:
     def __init__(self, id:int, name:str, slug:str,
                  abbreviation:str | None, release_date:str | None,
-                 card_count:int | None, last_synced_at:str | None):
+                 card_count:int | None, last_synced_at:str | None, last_api_sync:str):
         self.id = id
         self.name = name
         self.slug = slug
@@ -9,6 +9,7 @@ class Set:
         self.release_date = release_date
         self.card_count = card_count
         self.last_synced_at = last_synced_at
+        self.last_api_sync = last_api_sync
 
     def __str__(self):
         return f"{self.name} ({self.abbreviation})"
@@ -24,7 +25,8 @@ class Set:
             'abbreviation' : self.abbreviation if self.abbreviation is not None else "",
             'release_date' : self.release_date if self.release_date is not None else "",
             'card_count' : self.card_count if self.card_count is not None else 0,
-            'last_synced_at' : self.last_synced_at if self.last_synced_at is not None else ""
+            'last_synced_at' : self.last_synced_at if self.last_synced_at is not None else "",
+            'last_api_sync' : self.last_api_sync
         }
         return dictionary
 

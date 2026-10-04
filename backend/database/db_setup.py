@@ -21,7 +21,8 @@ class DatabaseSetup:
         abbreviation TEXT,
         release_date TEXT,
         card_count INTEGER,
-        last_synced_at TEXT
+        last_synced_at TEXT,
+        last_api_sync TEXT
         )""")
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS cards (

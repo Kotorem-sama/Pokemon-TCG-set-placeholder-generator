@@ -1,5 +1,5 @@
 from database.db_setup import DatabaseSetup as database
-from api.pokemon_tcg_api import PokemonTCGAPI
+# from api.pokemon_tcg_api import PokemonTCGAPI
 import pytest , sys, asyncio
 
 async def main():
@@ -18,8 +18,8 @@ async def main():
 
     db_context.close()
 
-    result = await PokemonTCGAPI().get_sets()
-    print(result)
+    # result = await PokemonTCGAPI().get_sets()
+    # print(result)
 
 if __name__ == "__main__":
     asyncio.run(main())
