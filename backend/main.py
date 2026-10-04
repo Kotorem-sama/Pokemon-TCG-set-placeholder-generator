@@ -1,6 +1,7 @@
 from database.db_setup import DatabaseSetup as database
-import pytest , sys, asyncio
+import pytest, sys, asyncio
 from services.SyncService import SyncService
+from config import database_path
 
 async def main():
     test_result = pytest.main(["tests"])
@@ -11,11 +12,11 @@ async def main():
 
     print("All tests passed. Starting application...")
 
-    db = database(r"C:\Users\ricky\Documents\Projects\Pokemon TCG set lister\backend\data\pokemon_cards.db")
+    db = database(database_path)
     db_context = db.initialise_db(db.connect_db())
 
     # await SyncService().sync_sets(db_context)
-    await SyncService().sync_set(db_context, 5500181)
+    # await SyncService().sync_set(db_context, 5500181)
 
     db_context.close()
 

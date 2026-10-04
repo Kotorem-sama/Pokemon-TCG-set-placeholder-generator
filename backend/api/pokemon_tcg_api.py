@@ -70,8 +70,10 @@ class PokemonTCGAPI:
             if response.status_code == 404:
                 return {
                     "success": True,
-                    "image_data": None,
-                    "content_type": "False"
+                    "data": {
+                        "image_data": None,
+                        "content_type": "False"
+                    }
                 }
 
             response.raise_for_status()
