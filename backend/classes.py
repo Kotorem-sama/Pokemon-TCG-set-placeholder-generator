@@ -54,6 +54,18 @@ class Card:
         self.rarity = rarity
         self.card_variants = card_variants
 
+    @classmethod
+    def from_api_to_Card(cls, jsondata:Any) -> Card:
+        new_card = cls(
+            jsondata["id"],
+            jsondata["set_id"],
+            jsondata["name"],
+            jsondata["number"],
+            jsondata["rarity"],
+            jsondata["card_variants"])
+
+        return new_card
+
     def __str__(self):
         return f"{self.name} ({self.number})"
 

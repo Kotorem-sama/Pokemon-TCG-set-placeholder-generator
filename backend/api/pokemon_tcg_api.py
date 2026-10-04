@@ -26,13 +26,13 @@ class PokemonTCGAPI:
         except Exception as error:
             return { "success": False, "error": str(error) }
 
-    async def __get_all_pages(self, method:str, endpoint:str) -> Any:
-        response = await self._request(method, f"{endpoint}&page=1")
+    async def __get_all_pages(self, method:str, endpoint:str, start_page:int = 1) -> Any:
+        response = await self._request(method, f"{endpoint}&page={start_page}")
 
         if not response["success"]:
             return response
         
-        page = 2
+        page = start_page+1
         while True:
             next_response = await self._request(method, f"{endpoint}&page={page}")
 
@@ -53,8 +53,8 @@ class PokemonTCGAPI:
     async def get_set(self, set_id: int) -> Any:
         return await self._request("GET", f"/v1/sets/{set_id}")
 
-    async def get_cards(self, set_id:int) -> Any:
-        return await self.__get_all_pages("GET", f"/v1/sets/{set_id}/cards?per_page=100")
+    async def get_cards(self, set_id:int, start_page:int = 1) -> Any:
+        return await self.__get_all_pages("GET", f"/v1/sets/{set_id}/cards?per_page=100", start_page)
 
     async def get_card(self, card_id: int) -> Any:
         return await self._request("GET", f"/v1/cards/{card_id}")
