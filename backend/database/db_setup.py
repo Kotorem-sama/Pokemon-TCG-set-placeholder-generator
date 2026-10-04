@@ -42,7 +42,7 @@ class DatabaseSetup:
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS card_images (
         card_id INTEGER PRIMARY KEY,
-        image_data BLOB NOT NULL,
+        image_data BLOB,
         content_type TEXT NOT NULL,
         FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
         )""")

@@ -44,6 +44,21 @@ class SyncService:
 
         return updated_set
 
+    async def sync_image(self, db_context:Connection, image_url:str, card_id:int) -> bool:
+        db_card_image = self.card_operations.get_image(db_context, card_id)
+        if db_card_image == None:
+            response = await self.pokemontcgapi.get_image(image_url)
+
+            if not response["success"]:
+                print("Failed to retreive image from card", response["error"])
+                return False
+
+            if not self.card_operations.save_image(db_context, card_id, response["image_data"], response["content_type"]):
+                print("Failed to save image to database")
+                return False
+
+        return True
+
     async def sync_cards_in_set(self, db_context:Connection, set_id:int, difference:int, db_set_cards:list[Card]) -> bool:
         api_response = await self.pokemontcgapi.get_cards(set_id, (difference + 100) // 100)
         db_card_id = [item.id for item in db_set_cards]
@@ -58,6 +73,9 @@ class SyncService:
 
                 if not add_attempt:
                     print("Failed to add card to database.")
+                    return False
+
+                if not await self.sync_image(db_context, card["image_url"], card["id"]):
                     return False
 
         return True
@@ -79,7 +97,6 @@ class SyncService:
         
         if difference > 0:
             if not await self.sync_cards_in_set(db_context, set_id, difference, db_set_cards):
-                print("Failed to get cards in set")
                 return None
 
         return db_set

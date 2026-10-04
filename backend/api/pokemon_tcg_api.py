@@ -1,5 +1,5 @@
 from config import API_KEY, BASE_URL, TIMEOUT
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from typing import Any
 
 class PokemonTCGAPI:
@@ -61,3 +61,39 @@ class PokemonTCGAPI:
 
     async def get_card_prices(self, card_id: int) -> Any:
         return await self._request("GET", f"/v1/cards/{card_id}/prices")
+
+    async def get_image(self, image_url:str) -> Any:
+        try:
+            async with AsyncClient(timeout=self.timeout) as client:
+                response: Response = await client.get(image_url)
+
+            if response.status_code == 404:
+                return {
+                    "success": True,
+                    "image_data": None,
+                    "content_type": "False"
+                }
+
+            response.raise_for_status()
+
+            content_type = response.headers.get("Content-Type")
+
+            if content_type is None:
+                return {
+                    "success": False,
+                    "error": "Image response did not contain a Content-Type header."
+                }
+
+            return {
+                "success": True,
+                "data": {
+                    "image_data": response.content,
+                    "content_type": content_type
+                }
+            }
+
+        except Exception as error:
+            return {
+                "success": False,
+                "error": str(error)
+            }
