@@ -1,8 +1,6 @@
 from database.db_setup import DatabaseSetup as database
-import pytest
-import sys
 from api.pokemon_tcg_api import PokemonTCGAPI
-import asyncio
+import pytest , sys, asyncio
 
 async def main():
     test_result = pytest.main(["tests"])
