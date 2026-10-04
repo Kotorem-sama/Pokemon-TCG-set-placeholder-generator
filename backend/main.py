@@ -1,8 +1,10 @@
 from database.db_setup import DatabaseSetup as database
 import pytest
 import sys
+from api.pokemon_tcg_api import PokemonTCGAPI
+import asyncio
 
-def main():
+async def main():
     test_result = pytest.main(["tests"])
 
     if test_result != 0:
@@ -18,6 +20,8 @@ def main():
 
     db_context.close()
 
+    result = await PokemonTCGAPI().get_sets()
+    print(result)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
