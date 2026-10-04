@@ -14,7 +14,8 @@ async def main():
     db = database(r"C:\Users\ricky\Documents\Projects\Pokemon TCG set lister\backend\data\pokemon_cards.db")
     db_context = db.initialise_db(db.connect_db())
 
-    await SyncService().sync_sets(db_context)
+    # await SyncService().sync_sets(db_context)
+    await SyncService().get_set(db_context, 5500216)
 
     db_context.close()
 

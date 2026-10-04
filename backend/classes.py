@@ -1,3 +1,5 @@
+from typing import Any
+
 class Set:
     def __init__(self, id:int, name:str, slug:str,
                  abbreviation:str | None, release_date:str | None,
@@ -9,6 +11,19 @@ class Set:
         self.release_date = release_date
         self.card_count = card_count
         self.sync_complete = sync_complete
+
+    @classmethod
+    def from_api_to_Set(cls, jsondata:Any) -> Set:
+        new_set = cls(
+            jsondata["id"],
+            jsondata["name"],
+            jsondata["slug"],
+            jsondata["abbreviation"],
+            jsondata["release_date"],
+            jsondata["card_count"],
+            0)
+
+        return new_set
 
     def __str__(self):
         return f"{self.name} ({self.abbreviation})"
