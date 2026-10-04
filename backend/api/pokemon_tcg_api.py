@@ -26,27 +26,35 @@ class PokemonTCGAPI:
         except Exception as error:
             return { "success": False, "error": str(error) }
 
+    async def __get_all_pages(self, method:str, endpoint:str) -> Any:
+        response = await self._request(method, f"{endpoint}&page=1")
+
+        if not response["success"]:
+            return response
+        
+        page = 2
+        while True:
+            next_response = await self._request(method, f"{endpoint}&page={page}")
+
+            if not next_response["success"]:
+                return next_response
+
+            if next_response['data'] == []:
+                break
+            
+            response['data'].extend(next_response['data'])
+            page += 1
+
+        return response
+
     async def get_sets(self) -> Any:
-        return await self._request("GET", "/v1/sets?game=pokemon")
+        return await self.__get_all_pages("GET", "/v1/sets?game=pokemon&per_page=100")
 
     async def get_set(self, set_id: int) -> Any:
         return await self._request("GET", f"/v1/sets/{set_id}")
 
-    async def get_cards(self, set_id:int, card_count:int) -> Any:
-        response = await self._request("GET", f"/v1/sets/{set_id}/cards?per_page=100&page=1")
-
-        if not response["success"]:
-            return response
-
-        for page in range(2, ((card_count + 99) // 100) + 1):
-            next_response = await self._request("GET", f"/v1/sets/{set_id}/cards?per_page=100&page={page}")
-            
-            if not next_response["success"]:
-                return next_response
-            
-            response['data'].extend(next_response['data'])
-
-        return response
+    async def get_cards(self, set_id:int) -> Any:
+        return await self.__get_all_pages("GET", f"/v1/sets/{set_id}/cards?per_page=100")
 
     async def get_card(self, card_id: int) -> Any:
         return await self._request("GET", f"/v1/cards/{card_id}")

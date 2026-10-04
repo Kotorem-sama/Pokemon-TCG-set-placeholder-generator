@@ -22,7 +22,7 @@ class Set_operations:
     def __get_sets_from_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> list[Set]:
         cursor = db_context.cursor()
 
-        cursor.execute(f"SELECT * FROM sets {query}", values)
+        cursor.execute(f"SELECT * FROM sets {query} ORDER BY release_date DESC", values)
         tuple_list = cursor.fetchall()
         set_list:list[Set] = []
         

@@ -1,6 +1,6 @@
 from database.db_setup import DatabaseSetup as database
-# from api.pokemon_tcg_api import PokemonTCGAPI
 import pytest , sys, asyncio
+from services.SyncService import SyncService
 
 async def main():
     test_result = pytest.main(["tests"])
@@ -14,12 +14,9 @@ async def main():
     db = database(r"C:\Users\ricky\Documents\Projects\Pokemon TCG set lister\backend\data\pokemon_cards.db")
     db_context = db.initialise_db(db.connect_db())
 
-    db.reset_db(db_context)
+    await SyncService().sync_sets(db_context)
 
     db_context.close()
-
-    # result = await PokemonTCGAPI().get_sets()
-    # print(result)
 
 if __name__ == "__main__":
     asyncio.run(main())
