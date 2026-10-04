@@ -1,7 +1,7 @@
 class Set:
     def __init__(self, id:int, name:str, slug:str,
                  abbreviation:str | None, release_date:str | None,
-                 card_count:int | None, last_synced_at:str | None, last_api_sync:str):
+                 card_count:int | None, last_synced_at:str | None, last_api_sync:str | None):
         self.id = id
         self.name = name
         self.slug = slug
@@ -26,7 +26,7 @@ class Set:
             'release_date' : self.release_date if self.release_date is not None else "",
             'card_count' : self.card_count if self.card_count is not None else 0,
             'last_synced_at' : self.last_synced_at if self.last_synced_at is not None else "",
-            'last_api_sync' : self.last_api_sync
+            'last_api_sync' : self.last_api_sync if self.last_api_sync is not None else ""
         }
         return dictionary
 
