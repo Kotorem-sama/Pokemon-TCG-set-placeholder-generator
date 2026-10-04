@@ -55,14 +55,13 @@ class Card:
         self.card_variants = card_variants
 
     @classmethod
-    def from_api_to_Card(cls, jsondata:Any) -> Card:
+    def from_api_to_Card(cls, jsondata:Any, set_id:int) -> Card:
         new_card = cls(
             jsondata["id"],
-            jsondata["set_id"],
+            set_id,
             jsondata["name"],
             jsondata["number"],
-            jsondata["rarity"],
-            jsondata["card_variants"])
+            jsondata["rarity"])
 
         return new_card
 

@@ -46,14 +46,14 @@ class SyncService:
 
     async def sync_cards_in_set(self, db_context:Connection, set_id:int, difference:int, db_set_cards:list[Card]) -> bool:
         api_response = await self.pokemontcgapi.get_cards(set_id, (difference + 100) // 100)
-        db_card_ids = [item.id for item in db_set_cards]
+        db_card_id = [item.id for item in db_set_cards]
 
         if not api_response["success"]:
             print(api_response["error"])
             return False
         for card in api_response['data']:
-            if card["id"] not in db_card_ids:
-                new_card = Card.from_api_to_Card(card)
+            if card["id"] not in db_card_id:
+                new_card = Card.from_api_to_Card(card, set_id)
                 add_attempt = self.card_operations.add_card(db_context, new_card)
 
                 if not add_attempt:
@@ -82,4 +82,4 @@ class SyncService:
                 print("Failed to get cards in set")
                 return None
 
-        
+        return db_set

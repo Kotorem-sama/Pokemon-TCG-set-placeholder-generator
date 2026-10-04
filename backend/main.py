@@ -15,7 +15,7 @@ async def main():
     db_context = db.initialise_db(db.connect_db())
 
     # await SyncService().sync_sets(db_context)
-    await SyncService().get_set(db_context, 5500216)
+    await SyncService().sync_set(db_context, 5500181)
 
     db_context.close()
 
