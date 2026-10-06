@@ -1,9 +1,10 @@
 from database.db_setup import DatabaseSetup as database
 import pytest, sys, asyncio
 from services.SyncService import SyncService
-from config import database_path
+from initializer import startup
 
 async def main():
+    database_path = startup()
     test_result = pytest.main(["tests"])
 
     if test_result != 0:

@@ -9,5 +9,3 @@ TIMEOUT = 10
 
 if API_KEY is None:
     raise ValueError("POKEMON_TCG_API_KEY is not set")
-
-database_path = os.path.dirname(os.path.realpath(__file__)) + r"\data\pokemon_cards.db"
