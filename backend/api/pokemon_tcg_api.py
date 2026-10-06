@@ -11,6 +11,8 @@ class PokemonTCGAPI:
     async def _request(self, method:str, endpoint:str, headers: dict[str, str] | None = None) -> Any:
         url = f"{self.base_url}{endpoint}"
 
+        print(f"{method}: {url}")
+
         assert self.api_key is not None
         headers = {} if headers is None else headers
         headers["X-API-Key"] = self.api_key

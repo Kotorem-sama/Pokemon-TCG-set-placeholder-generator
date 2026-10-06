@@ -87,13 +87,14 @@ class SyncService:
         api_response = await self.pokemontcgapi.get_cards(set_id, start_page)
         db_card_id = [item.id for item in db_set_cards]
 
-        print(api_response)
-
         if not api_response["success"]:
             print(api_response["error"])
             return False
         
         for card in api_response['data']:
+            if card["product_type"] != "Cards" or card["rarity"] == "Code Card":
+                continue
+
             if refresh_existing_cards and card["id"] in db_card_id:
                 if not self.card_operations.delete_card_and_properties(db_context, card["id"]):
                     return False

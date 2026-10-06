@@ -312,3 +312,18 @@ class Card_operations:
                 return False
 
         return True
+
+    def cleanup(self, db_context: Connection) -> bool:
+        set_cards = self.get_cards_by_set(db_context, 5500216)
+        pb_cards: list[Card] = []
+
+        for card in set_cards:
+            if "pitch black" in card.name.lower():
+                pb_cards.append(card)
+
+        for card in pb_cards:
+            if not self.delete_card(db_context, card.id):
+                print("Failed to remove card.")
+                return False
+
+        return True
