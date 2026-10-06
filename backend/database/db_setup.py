@@ -10,6 +10,16 @@ class DatabaseSetup:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.row_factory = Row
         return conn
+
+    def integrity_check(self):
+        db_context = self.connect_db()
+        cursor = db_context.cursor()
+
+        check = cursor.execute("PRAGMA integrity_check").fetchone()
+
+        db_context.close()
+        
+        return check[0] == "ok"
         
     def initialise_db(self, db_context:Connection) -> Connection:
         cursor = db_context.cursor()

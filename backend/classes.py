@@ -25,7 +25,9 @@ class Set:
                 0)
 
             return new_set
-        except:
+        except (KeyError, TypeError, ValueError) as error:
+            print(error)
+
             new_set = cls(0, "", "", None, None, None, 9)
             return new_set
 
@@ -69,7 +71,9 @@ class Card:
                 jsondata["rarity"])
 
             return new_card
-        except:
+        except (KeyError, TypeError, ValueError) as error:
+            print(error)
+
             new_card = cls(0, 0, "", None, None, None)
             return new_card
 

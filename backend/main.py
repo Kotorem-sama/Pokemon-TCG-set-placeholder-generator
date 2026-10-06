@@ -4,7 +4,11 @@ from services.SyncService import SyncService
 from initializer import startup
 
 async def main():
+    await tests()
+
     database_path = startup()
+    if database_path is None:
+        quit()
 
     db = database(database_path)
     db_context = db.initialise_db(db.connect_db())

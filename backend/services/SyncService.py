@@ -21,7 +21,6 @@ class SyncService:
             if api_set["id"] not in db_set_ids:
                 new_set = Set.from_api_to_Set(api_set)
                 if new_set.id == 0 and new_set.sync_complete == 9:
-                    print("Unable to fetch data from TCG API. Please notify the developer to check the return types of the API.")
                     return database_sets
 
                 if not self.set_operations.add_set(db_context, new_set):
@@ -41,7 +40,6 @@ class SyncService:
         updated_set = Set.from_api_to_Set(api_response["data"])
 
         if updated_set.id == 0 and updated_set.sync_complete == 9:
-            print("Unable to fetch data from TCG API. Please notify the developer to check the return types of the API.")
             return None
         
         if not (self.set_operations.update_set(db_context, updated_set)):
@@ -59,6 +57,10 @@ class SyncService:
                 print("Failed to retreive image from card", response["error"])
                 return False
 
+            if response["data"] == None:
+                print("Failed to retreive image from card")
+                return False
+
             if not self.card_operations.save_image(db_context, card_id, response["data"]["image_data"], response["data"]["content_type"]):
                 print("Failed to save image to database")
                 return False
@@ -66,7 +68,7 @@ class SyncService:
         return True
 
     async def sync_cards_in_set(self, db_context:Connection, set_id:int, db_set_cards:list[Card]) -> bool:
-        api_response = await self.pokemontcgapi.get_cards(set_id, (len(db_set_cards) + 100) // 100)
+        api_response = await self.pokemontcgapi.get_cards(set_id, ((len(db_set_cards)) // 100) + 1)
         db_card_id = [item.id for item in db_set_cards]
 
         if not api_response["success"]:
@@ -78,7 +80,6 @@ class SyncService:
                 new_card = Card.from_api_to_Card(card, set_id)
 
                 if new_card.id == 0 and new_card.set_id == 0:
-                    print("Unable to fetch data from TCG API. Please notify the developer to check the return types of the API.")
                     return False
 
                 if not self.card_operations.add_card(db_context, new_card):
