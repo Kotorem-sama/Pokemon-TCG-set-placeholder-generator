@@ -61,9 +61,10 @@ class DatabaseSetup:
         
         return db_context
 
-    def reset_db(self, db_context:Connection):
+    def reset_db(self, db_context:Connection, databases:list[str] | None = None):
         cursor = db_context.cursor()
-        databases = ["card_images", "card_variants", "cards", "sets"]
+        if databases is None:
+            databases = ["card_images", "card_variants", "cards", "sets"]
 
         for table in databases:
             cursor.execute(f"""DROP TABLE IF EXISTS {table}""")

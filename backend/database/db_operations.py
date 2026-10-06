@@ -251,6 +251,17 @@ class Card_operations:
 
         return True
 
+    def delete_variants(self, db_context:Connection, card_id:int) -> bool:
+        variants = self.get_variants(db_context, card_id)
+        if not variants:
+            return True
+        
+        for variant in variants:
+            if not self.delete_variant(db_context, card_id, variant):
+                return False
+
+        return True
+
     # Card image operations
     def save_image(self, db_context: Connection, card_id:int, image_data:bytes, content_type:str) -> bool:
         cursor = db_context.cursor()
@@ -284,5 +295,20 @@ class Card_operations:
         except db_error as error:
             print(f"Failed to delete image: {error}")
             return False
+
+        return True
+
+    def delete_card_and_properties(self, db_context: Connection, card_id:int) -> bool:
+        if not self.get_image(db_context, card_id) is None:
+            if not self.delete_image(db_context, card_id):
+                return False
+
+        if self.get_variants(db_context, card_id):
+            if not self.delete_variants(db_context, card_id):
+                return False
+
+        if not self.get_card_by_id(db_context, card_id) is None:
+            if not self.delete_card(db_context, card_id):
+                return False
 
         return True
