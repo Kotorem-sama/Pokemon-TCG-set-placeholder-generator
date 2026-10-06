@@ -32,7 +32,7 @@ class PokemonTCGAPI:
         if not response["success"]:
             return response
         
-        page = start_page+1
+        page = start_page + 1
         while True:
             next_response = await self._request(method, f"{endpoint}&page={page}")
 

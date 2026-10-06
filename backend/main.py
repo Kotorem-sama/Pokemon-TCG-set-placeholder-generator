@@ -5,13 +5,6 @@ from initializer import startup
 
 async def main():
     database_path = startup()
-    test_result = pytest.main(["tests"])
-
-    if test_result != 0:
-        print("Tests failed. Application will not start.")
-        sys.exit(test_result)
-
-    print("All tests passed. Starting application...")
 
     db = database(database_path)
     db_context = db.initialise_db(db.connect_db())
@@ -20,6 +13,15 @@ async def main():
     # await SyncService().sync_set(db_context, 5500181)
 
     db_context.close()
+
+async def tests():
+    test_result = pytest.main(["tests"])
+    
+    if test_result != 0:
+        print("Tests failed.")
+        sys.exit(test_result)
+
+    print("All tests passed.")
 
 if __name__ == "__main__":
     asyncio.run(main())

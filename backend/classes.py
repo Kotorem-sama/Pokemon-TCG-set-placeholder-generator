@@ -14,16 +14,20 @@ class Set:
 
     @classmethod
     def from_api_to_Set(cls, jsondata:Any) -> Set:
-        new_set = cls(
-            jsondata["id"],
-            jsondata["name"],
-            jsondata["slug"],
-            jsondata["abbreviation"],
-            jsondata["release_date"],
-            jsondata["card_count"],
-            0)
+        try:
+            new_set = cls(
+                jsondata["id"],
+                jsondata["name"],
+                jsondata["slug"],
+                jsondata["abbreviation"],
+                jsondata["release_date"],
+                jsondata["card_count"],
+                0)
 
-        return new_set
+            return new_set
+        except:
+            new_set = cls(0, "", "", None, None, None, 9)
+            return new_set
 
     def __str__(self):
         return f"{self.name} ({self.abbreviation})"
@@ -46,24 +50,28 @@ class Set:
 class Card:
     def __init__(self, id:int, set_id:int, name:str,
                  number:str | None, rarity:str | None,
-                 card_variants:list[str] = []):
+                 card_variants:list[str] | None = None):
         self.id = id
         self.set_id = set_id
         self.name = name
         self.number = number
         self.rarity = rarity
-        self.card_variants = card_variants
+        self.card_variants = [] if card_variants is None else card_variants
 
     @classmethod
     def from_api_to_Card(cls, jsondata:Any, set_id:int) -> Card:
-        new_card = cls(
-            jsondata["id"],
-            set_id,
-            jsondata["name"],
-            jsondata["number"],
-            jsondata["rarity"])
+        try:
+            new_card = cls(
+                jsondata["id"],
+                set_id,
+                jsondata["name"],
+                jsondata["number"],
+                jsondata["rarity"])
 
-        return new_card
+            return new_card
+        except:
+            new_card = cls(0, 0, "", None, None, None)
+            return new_card
 
     def __str__(self):
         return f"{self.name} ({self.number})"
