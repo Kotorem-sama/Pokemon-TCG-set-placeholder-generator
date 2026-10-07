@@ -58,7 +58,6 @@ class SyncService:
         return updated_set
 
     async def sync_image(self, db_context:Connection, image_url:str, card_id:int) -> bool:
-
         response = await self.pokemontcgapi.get_image(image_url)
 
         if not response["success"]:
@@ -113,6 +112,7 @@ class SyncService:
                 db_card_id.remove(card["id"])
 
             if card["id"] not in db_card_id:
+                print(f"Adding card {card["id"]}")
                 new_card = Card.from_api_to_Card(card, set_id)
 
                 if new_card.id == 0 and new_card.set_id == 0:
@@ -123,15 +123,21 @@ class SyncService:
                     return False
 
             if not self.card_operations.get_image(db_context, card["id"]):
+                print(f"Getting the card image...")
+
                 if not await self.sync_image(db_context, card["image_url"], card["id"]):
                     return False
 
             variants = self.card_operations.get_variants(db_context, card["id"])
                 
             if not variants:
+                print(f"Getting the card variants...")
+                
                 if not await self.sync_card_variants(db_context, card["id"]):
                     return False
 
+        print("Succesfully added set!")
+        
         return True
 
     async def sync_set(self, db_context:Connection, set_id:int) -> Set | None:
@@ -153,8 +159,9 @@ class SyncService:
         if db_set.release_date is not None:
             release_date = date.fromisoformat(db_set.release_date) + timedelta(weeks=2)
             within_sync_window = release_date > date.today()
-        
+
         if db_set.sync_complete == 0 or within_sync_window:
+            print("Syncing cards in the set...")
             if not await self.sync_cards_in_set(db_context, set_id, db_set_cards, within_sync_window):
                 return None
         
