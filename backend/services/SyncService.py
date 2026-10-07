@@ -10,6 +10,8 @@ class SyncService:
         self.card_operations = Card_operations()
 
     async def sync_sets(self, db_context: Connection) -> list[Set]:
+        print("Syncing all sets...")
+
         api_response = await self.pokemontcgapi.get_sets()
         database_sets = self.set_operations.get_all_sets(db_context)
         db_set_ids = [item.id for item in database_sets]
@@ -30,9 +32,13 @@ class SyncService:
                 
                 database_sets.append(new_set)
 
+        print("Syncing sets complete!")
+
         return database_sets
 
     async def sync_set_info(self, db_context:Connection, set_id:int) -> Set | None:
+        print("Syncing set information...")
+
         api_response = await self.pokemontcgapi.get_set(set_id)
         if not api_response["success"]:
             print(api_response["error"])
@@ -47,9 +53,12 @@ class SyncService:
             print("Failed to update the set data to the database.")
             return None
 
+        print("Syncing set information complete!")
+
         return updated_set
 
     async def sync_image(self, db_context:Connection, image_url:str, card_id:int) -> bool:
+
         response = await self.pokemontcgapi.get_image(image_url)
 
         if not response["success"]:
@@ -69,20 +78,16 @@ class SyncService:
     async def sync_card_variants(self, db_context:Connection, card_id:int) -> bool:
         api_response = await self.pokemontcgapi.get_card_prices(card_id)
 
-        print("PRICE RESPONSE:", api_response)
-
         if not api_response["success"]:
             print(api_response["error"])
             return False
 
         for variant in api_response["data"]:
-            print("ADDING VARIANT:", card_id, variant["printing"])
+            
             if not self.card_operations.add_variant(db_context, card_id, variant["printing"]):
                 print("Failed to add card variant to database.")
                 self.card_operations.delete_variants(db_context, card_id)
                 return False
-
-        print("VARIANTS AFTER INSERT:", self.card_operations.get_variants(db_context, card_id))
         
         return True
 

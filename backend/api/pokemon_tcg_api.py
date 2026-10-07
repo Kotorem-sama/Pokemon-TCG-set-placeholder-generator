@@ -1,25 +1,40 @@
-from config import API_KEY, BASE_URL, TIMEOUT
+from config import API_KEYS, BASE_URL, TIMEOUT
 from httpx import AsyncClient, Response
 from typing import Any
+from re import findall
+from time import sleep
 
 class PokemonTCGAPI:
     def __init__(self) -> None:
-        self.api_key = API_KEY
+        self.api_keys:list[str] = API_KEYS
         self.base_url = BASE_URL
         self.timeout = TIMEOUT
+        self.key_number = 0
 
     async def _request(self, method:str, endpoint:str, headers: dict[str, str] | None = None) -> Any:
         url = f"{self.base_url}{endpoint}"
 
-        print(f"{method}: {url}")
+        if not self.api_keys:
+            return { "success": False, "error": "No API key has been set. Please fill in an API key in the .env file." }
 
-        assert self.api_key is not None
+        if self.key_number > len(self.api_keys):
+            return { "success": False, "error": "All API keys have run out of available tokens. Please wait till tomorrow to try again, or add a new key in the .env file."}
+
         headers = {} if headers is None else headers
-        headers["X-API-Key"] = self.api_key
-        try:
+        headers["X-API-Key"] = self.api_keys[self.key_number]
 
+        try:
             async with AsyncClient(timeout=self.timeout) as client:
                 response = await client.request(method, url, headers=headers)
+
+            if response.status_code in [401, 429]:
+                self.key_number = self.key_number + 1
+                headers.pop("X-API-Key")
+                return self._request(method, endpoint, headers)
+
+            if findall(r"\b5\d{2}\b", str(response.status_code)):
+                sleep(5)
+                return self._request(method, endpoint, headers)
 
             response.raise_for_status()
 

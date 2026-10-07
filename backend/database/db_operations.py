@@ -65,6 +65,9 @@ class Set_operations:
 
     def get_set_by_slug(self, db_context: Connection, slug:str) -> Set | None:
         return self.__get_set_from_query(db_context, "slug = :slug", {"slug": slug})
+
+    def get_set_by_name(self, db_context: Connection, name:str) -> Set | None:
+        return self.__get_set_from_query(db_context, "name LIKE :name", {"name": f"%{name}%"})
     
     def update_set(self, db_context: Connection, updated_set: Set) -> bool:
         cursor = db_context.cursor()
@@ -313,8 +316,8 @@ class Card_operations:
 
         return True
 
-    def cleanup(self, db_context: Connection) -> bool:
-        set_cards = self.get_cards_by_set(db_context, 5500216)
+    def reset_set_cards(self, db_context: Connection, set_id: int) -> bool:
+        set_cards = self.get_cards_by_set(db_context, set_id)
         pb_cards: list[Card] = []
 
         for card in set_cards:
