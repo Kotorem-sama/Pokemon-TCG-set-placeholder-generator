@@ -69,15 +69,21 @@ class SyncService:
     async def sync_card_variants(self, db_context:Connection, card_id:int) -> bool:
         api_response = await self.pokemontcgapi.get_card_prices(card_id)
 
+        print("PRICE RESPONSE:", api_response)
+
         if not api_response["success"]:
             print(api_response["error"])
             return False
 
         for variant in api_response["data"]:
+            print("ADDING VARIANT:", card_id, variant["printing"])
             if not self.card_operations.add_variant(db_context, card_id, variant["printing"]):
                 print("Failed to add card variant to database.")
+                self.card_operations.delete_variants(db_context, card_id)
                 return False
 
+        print("VARIANTS AFTER INSERT:", self.card_operations.get_variants(db_context, card_id))
+        
         return True
 
     async def sync_cards_in_set(self, db_context:Connection, set_id:int, db_set_cards:list[Card], refresh_existing_cards: bool) -> bool:
@@ -114,8 +120,10 @@ class SyncService:
             if not self.card_operations.get_image(db_context, card["id"]):
                 if not await self.sync_image(db_context, card["image_url"], card["id"]):
                     return False
+
+            variants = self.card_operations.get_variants(db_context, card["id"])
                 
-            if not self.card_operations.get_variants(db_context, card["id"]):
+            if not variants:
                 if not await self.sync_card_variants(db_context, card["id"]):
                     return False
 
@@ -138,11 +146,10 @@ class SyncService:
         within_sync_window = True
 
         if db_set.release_date is not None:
-            two_weeks_from_today  = date.today() + timedelta(weeks=2)
-            release_date = date.fromisoformat(db_set.release_date)
-            within_sync_window = release_date < two_weeks_from_today
+            release_date = date.fromisoformat(db_set.release_date) + timedelta(weeks=2)
+            within_sync_window = release_date > date.today()
         
-        if db_set.sync_complete == 0 or within_sync_window :
+        if db_set.sync_complete == 0 or within_sync_window:
             if not await self.sync_cards_in_set(db_context, set_id, db_set_cards, within_sync_window):
                 return None
         
