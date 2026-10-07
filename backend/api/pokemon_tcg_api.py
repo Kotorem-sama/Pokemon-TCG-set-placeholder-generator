@@ -17,7 +17,7 @@ class PokemonTCGAPI:
         if not self.api_keys:
             return { "success": False, "error": "No API key has been set. Please fill in an API key in the .env file." }
 
-        if self.key_number > len(self.api_keys):
+        if self.key_number >= len(self.api_keys):
             return { "success": False, "error": "All API keys have run out of available tokens. Please wait till tomorrow to try again, or add a new key in the .env file."}
 
         headers = {} if headers is None else headers
@@ -30,11 +30,11 @@ class PokemonTCGAPI:
             if response.status_code in [401, 429]:
                 self.key_number = self.key_number + 1
                 headers.pop("X-API-Key")
-                return self._request(method, endpoint, headers)
+                return await self._request(method, endpoint, headers)
 
             if findall(r"\b5\d{2}\b", str(response.status_code)):
                 sleep(5)
-                return self._request(method, endpoint, headers)
+                return await self._request(method, endpoint, headers)
 
             response.raise_for_status()
 

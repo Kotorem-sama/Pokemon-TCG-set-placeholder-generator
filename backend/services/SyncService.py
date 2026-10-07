@@ -1,6 +1,7 @@
 from api.pokemon_tcg_api import PokemonTCGAPI
 from database.db_operations import Set_operations, Card_operations, Set, Connection, Card
 from datetime import date, timedelta
+from typing import Any
 
 class SyncService:
 
@@ -90,6 +91,26 @@ class SyncService:
         
         return True
 
+    def is_card(self, card: dict[str, Any]) -> bool:
+        if card["product_type"] != "Cards":
+            return False
+
+        if card["rarity"] == "Code Card":
+            return False
+
+        custom_attributes = card.get("custom_attributes", {})
+
+        if card["rarity"] is not None:
+            return True
+
+        if custom_attributes.get("cardType"):
+            return True
+
+        if custom_attributes.get("cardTypeB"):
+            return True
+
+        return False
+
     async def sync_cards_in_set(self, db_context:Connection, set_id:int, db_set_cards:list[Card], refresh_existing_cards: bool) -> bool:
         start_page = 1 if refresh_existing_cards else ((len(db_set_cards) - 5) // 100) + 1
         start_page = start_page if start_page > 0 else 1
@@ -102,7 +123,7 @@ class SyncService:
             return False
         
         for card in api_response['data']:
-            if card["product_type"] != "Cards" or card["rarity"] == "Code Card":
+            if not self.is_card(card):
                 continue
 
             if refresh_existing_cards and card["id"] in db_card_id:
@@ -112,7 +133,7 @@ class SyncService:
                 db_card_id.remove(card["id"])
 
             if card["id"] not in db_card_id:
-                print(f"Adding card {card["id"]}")
+                print(f"Adding card {card["number"]}")
                 new_card = Card.from_api_to_Card(card, set_id)
 
                 if new_card.id == 0 and new_card.set_id == 0:
@@ -135,8 +156,6 @@ class SyncService:
                 
                 if not await self.sync_card_variants(db_context, card["id"]):
                     return False
-
-        print("Succesfully added set!")
         
         return True
 
@@ -170,4 +189,5 @@ class SyncService:
             print("Failed to finish updating a set to the database.")
             return None
 
+        print("Succesfully added set!")
         return db_set

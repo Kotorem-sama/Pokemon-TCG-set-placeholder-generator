@@ -111,6 +111,14 @@ class Set_operations:
 
         return True
 
+    def is_set_complete(self, db_context: Connection, current_set:Set) -> bool:
+        cards_in_set = Card_operations().get_cards_by_set(db_context, current_set.id)
+
+        if len(cards_in_set) == current_set.card_count:
+            return True
+
+        return False
+
 class Card_operations:
     def __get_card_by_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> Card | None:
         cursor = db_context.cursor()
@@ -318,15 +326,15 @@ class Card_operations:
 
     def reset_set_cards(self, db_context: Connection, set_id: int) -> bool:
         set_cards = self.get_cards_by_set(db_context, set_id)
-        pb_cards: list[Card] = []
 
         for card in set_cards:
-            if "pitch black" in card.name.lower():
-                pb_cards.append(card)
-
-        for card in pb_cards:
             if not self.delete_card(db_context, card.id):
                 print("Failed to remove card.")
                 return False
+
+        current_set = Set_operations().get_set_by_id(db_context, set_id)
+        assert current_set
+        current_set.sync_complete = 0
+        Set_operations().update_set(db_context, current_set)
 
         return True
