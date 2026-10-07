@@ -2,3 +2,4 @@ __pycache__
 .env
 pokemon_cards.db
 /.vscode
+backend/.env
