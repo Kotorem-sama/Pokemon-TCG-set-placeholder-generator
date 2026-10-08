@@ -19,7 +19,11 @@ class PokemonTCGAPI:
         self.retried_request = False
 
     async def _request(
-        self, method: str, endpoint: str, headers: dict[str, str] | None = None, timeout_type:str ="default"
+        self,
+        method: str,
+        endpoint: str,
+        headers: dict[str, str] | None = None,
+        timeout_type: str = "default",
     ) -> Any:
         """Send an API request, handling retries, API keys and response errors."""
         logger = logging.getLogger(__name__)
@@ -94,17 +98,25 @@ class PokemonTCGAPI:
             return {"success": False, "error": str(error)}
 
     async def __get_all_pages(
-        self, method: str, endpoint: str, start_page: int = 1, timeout_type: str = "default"
+        self,
+        method: str,
+        endpoint: str,
+        start_page: int = 1,
+        timeout_type: str = "default",
     ) -> Any:
         """Retrieve all pages of results and combine them into one response."""
-        response = await self._request(method, f"{endpoint}&page={start_page}", {}, timeout_type)
+        response = await self._request(
+            method, f"{endpoint}&page={start_page}", {}, timeout_type
+        )
 
         if not response["success"]:
             return response
 
         page = start_page + 1
         while True:
-            next_response = await self._request(method, f"{endpoint}&page={page}", {}, timeout_type)
+            next_response = await self._request(
+                method, f"{endpoint}&page={page}", {}, timeout_type
+            )
 
             if not next_response["success"]:
                 return next_response

@@ -23,8 +23,8 @@ BASE_URL: str = "https://api.tcgapi.dev"
 TIMEOUTS = {
     "set_metadata": 10,
     "card_list": 30,  # More cards = longer
-    "image": 60,       # Images are bigger
-    "default": 10
+    "image": 60,  # Images are bigger
+    "default": 10,
 }
 
 # TCGAPI keys must use the format tcg_live_<40 hexadecimal characters>.
