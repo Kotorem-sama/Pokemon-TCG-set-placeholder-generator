@@ -1,7 +1,7 @@
-import logging, datetime
-from datetime import date, timedelta
+import datetime
+import logging
+from datetime import date, datetime, timedelta
 from typing import Any
-from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from api.pokemon_tcg_api import PokemonTCGAPI
@@ -80,15 +80,12 @@ class SyncService:
         if response["data"] == None:
             return False
 
-        if not self.card_operations.save_image(
+        return self.card_operations.save_image(
             db_context,
             card_id,
             response["data"]["image_data"],
             response["data"]["content_type"],
-        ):
-            return False
-
-        return True
+        )
 
     async def sync_card_variants(self, db_context: Connection, card_id: int) -> bool:
         """Synchronise all available variants for a card."""
@@ -191,7 +188,9 @@ class SyncService:
 
         db_set = self.set_operations.get_set_by_id(db_context, set_id)
         if db_set is None:
-            logger.info(f"Unable to find set '{set_id}' in the database. Attempting to get set info.")
+            logger.info(
+                f"Unable to find set '{set_id}' in the database. Attempting to get set info."
+            )
 
             db_set = await self.sync_set_info(db_context, set_id)
 
@@ -210,7 +209,9 @@ class SyncService:
 
         if db_set.release_date is not None:
             release_date = date.fromisoformat(db_set.release_date) + timedelta(weeks=2)
-            within_sync_window = release_date > datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+            within_sync_window = (
+                release_date > datetime.now(ZoneInfo("Europe/Amsterdam")).date()
+            )
 
         # Recently released sets are refreshed to account for newly available card data.
         if db_set.sync_complete == 0 or within_sync_window:

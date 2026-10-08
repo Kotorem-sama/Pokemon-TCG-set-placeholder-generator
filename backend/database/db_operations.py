@@ -161,10 +161,7 @@ class Set_operations:
         """Check whether all cards belonging to a set have been stored."""
         cards_in_set = Card_operations().get_cards_by_set(db_context, current_set.id)
 
-        if len(cards_in_set) == current_set.card_count:
-            return True
-
-        return False
+        return len(cards_in_set) == current_set.card_count
 
 
 class Card_operations:

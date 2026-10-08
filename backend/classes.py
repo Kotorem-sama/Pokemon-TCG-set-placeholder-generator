@@ -21,7 +21,7 @@ class Set:
         self.sync_complete = sync_complete
 
     @classmethod
-    def from_api_to_Set(cls, jsondata: Any) -> Set:
+    def from_api_to_Set(cls, jsondata: Any):
         try:
             new_set = cls(
                 jsondata["id"],
@@ -77,7 +77,7 @@ class Card:
         self.card_variants = [] if card_variants is None else card_variants
 
     @classmethod
-    def from_api_to_Card(cls, jsondata: Any, set_id: int) -> Card:
+    def from_api_to_Card(cls, jsondata: Any, set_id: int):
         try:
             new_card = cls(
                 jsondata["id"],

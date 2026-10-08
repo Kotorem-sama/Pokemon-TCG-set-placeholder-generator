@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import sys
 
 import pytest
 from backend.services.sync_service import SyncService
@@ -13,7 +14,7 @@ async def main():
 
     database_path = startup()
     if database_path is None:
-        quit()
+        sys.exit()
 
     await tests()
 
@@ -35,7 +36,7 @@ async def tests():
 
     if test_result != 0:
         logger.error(f"Unit tests came back with an error: {test_result}")
-        quit()
+        sys.exit()
 
     logger.info("Tests have successfully been conducted!")
 
