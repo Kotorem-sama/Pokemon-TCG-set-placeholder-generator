@@ -9,6 +9,8 @@ from config import API_KEYS, BASE_URL, TIMEOUT
 
 
 class PokemonTCGAPI:
+    """Handles asynchronous requests to the Pokémon TCG API."""
+
     def __init__(self) -> None:
         self.api_keys: list[str] = API_KEYS
         self.base_url = BASE_URL
@@ -19,6 +21,7 @@ class PokemonTCGAPI:
     async def _request(
         self, method: str, endpoint: str, headers: dict[str, str] | None = None
     ) -> Any:
+        """Send an API request, handling retries, API keys and response errors."""
         logger = logging.getLogger(__name__)
 
         if not self.api_keys:
@@ -41,6 +44,7 @@ class PokemonTCGAPI:
             async with AsyncClient(timeout=self.timeout) as client:
                 response = await client.request(method, url, headers=headers)
 
+            # Retry a server error once after a short delay.
             if (
                 findall(r"\b5\d{2}\b", str(response.status_code))
                 and not self.retried_request
@@ -65,6 +69,7 @@ class PokemonTCGAPI:
                     "Trying again with a different key if there is another."
                 )
 
+            # Move to the next API key when the current key is rejected or rate-limited.
             if response.status_code in [401, 429]:
                 self.key_number = self.key_number + 1
 
@@ -91,6 +96,7 @@ class PokemonTCGAPI:
     async def __get_all_pages(
         self, method: str, endpoint: str, start_page: int = 1
     ) -> Any:
+        """Retrieve all pages of results and combine them into one response."""
         response = await self._request(method, f"{endpoint}&page={start_page}")
 
         if not response["success"]:
@@ -112,23 +118,29 @@ class PokemonTCGAPI:
         return response
 
     async def get_sets(self) -> Any:
+        """Retrieve all Pokémon TCG sets."""
         return await self.__get_all_pages("GET", "/v1/sets?game=pokemon&per_page=100")
 
     async def get_set(self, set_id: int) -> Any:
+        """Retrieve a specific set by its ID."""
         return await self._request("GET", f"/v1/sets/{set_id}")
 
     async def get_cards(self, set_id: int, start_page: int = 1) -> Any:
+        """Retrieve all cards belonging to a set."""
         return await self.__get_all_pages(
             "GET", f"/v1/sets/{set_id}/cards?per_page=100", start_page
         )
 
     async def get_card(self, card_id: int) -> Any:
+        """Retrieve a specific card by its ID."""
         return await self._request("GET", f"/v1/cards/{card_id}")
 
     async def get_card_prices(self, card_id: int) -> Any:
+        """Retrieve price information for a specific card."""
         return await self._request("GET", f"/v1/cards/{card_id}/prices")
 
     async def get_image(self, image_url: str) -> Any:
+        """Download an image and return its bytes and content type."""
         logger = logging.getLogger(__name__)
 
         try:

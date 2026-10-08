@@ -2,10 +2,10 @@ import asyncio
 import logging
 
 import pytest
+from backend.services.sync_service import SyncService
 
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
-from services.SyncService import SyncService
 
 
 async def main():
