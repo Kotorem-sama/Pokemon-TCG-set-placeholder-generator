@@ -2,6 +2,8 @@ from typing import Any
 
 
 class Set:
+    """Represents a Pokémon TCG set and its synchronisation status."""
+
     def __init__(
         self,
         id: int,
@@ -12,6 +14,7 @@ class Set:
         card_count: int | None,
         sync_complete: int,
     ):
+        """Initialize a set with its identifying information and metadata."""
         self.id = id
         self.name = name
         self.slug = slug
@@ -22,6 +25,7 @@ class Set:
 
     @classmethod
     def from_api_to_Set(cls, jsondata: Any):
+        """Create a Set from API data, returning a fallback object if invalid."""
         try:
             new_set = cls(
                 jsondata["id"],
@@ -37,16 +41,20 @@ class Set:
         except (KeyError, TypeError, ValueError) as error:
             print(error)
 
+            # A special ID and status indicate that the API data could not be converted.
             new_set = cls(0, "", "", None, None, None, 9)
             return new_set
 
     def __str__(self):
+        """Return a readable representation of the set."""
         return f"{self.name} ({self.abbreviation})"
 
     def __repr__(self):
+        """Use the readable string representation when displaying the object."""
         return self.__str__()
 
     def get_dict(self) -> dict[str, int | str]:
+        """Return the set's attributes as a dictionary for database operations."""
         dictionary: dict[str, int | str] = {
             "id": self.id,
             "name": self.name,
@@ -60,6 +68,8 @@ class Set:
 
 
 class Card:
+    """Represents a Pokémon card and its associated metadata."""
+
     def __init__(
         self,
         id: int,
@@ -69,6 +79,7 @@ class Card:
         rarity: str | None,
         card_variants: list[str] | None = None,
     ):
+        """Initialize a card with its details and optional variants."""
         self.id = id
         self.set_id = set_id
         self.name = name
@@ -78,6 +89,7 @@ class Card:
 
     @classmethod
     def from_api_to_Card(cls, jsondata: Any, set_id: int):
+        """Create a Card from API data, returning a fallback object if invalid."""
         try:
             new_card = cls(
                 jsondata["id"],
@@ -91,16 +103,20 @@ class Card:
         except (KeyError, TypeError, ValueError) as error:
             print(error)
 
+            # A special ID indicates that the API data could not be converted.
             new_card = cls(0, 0, "", None, None, None)
             return new_card
 
     def __str__(self):
+        """Return a readable representation of the card."""
         return f"{self.name} ({self.number})"
 
     def __repr__(self):
+        """Use the readable string representation when displaying the object."""
         return self.__str__()
 
     def get_dict(self) -> dict[str, int | str | list[str]]:
+        """Return the card's attributes as a dictionary for database operations."""
         dictionary: dict[str, int | str | list[str]] = {
             "id": self.id,
             "set_id": self.set_id,

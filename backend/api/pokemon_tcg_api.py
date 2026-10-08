@@ -5,7 +5,7 @@ from typing import Any
 
 from httpx import AsyncClient, HTTPStatusError, RequestError, Response
 
-from config import API_KEYS, BASE_URL, TIMEOUT
+from config import API_KEYS, BASE_URL, TIMEOUTS
 
 
 class PokemonTCGAPI:
@@ -14,12 +14,12 @@ class PokemonTCGAPI:
     def __init__(self) -> None:
         self.api_keys: list[str] = API_KEYS
         self.base_url = BASE_URL
-        self.timeout = TIMEOUT
+        self.timeouts = TIMEOUTS
         self.key_number = 0
         self.retried_request = False
 
     async def _request(
-        self, method: str, endpoint: str, headers: dict[str, str] | None = None
+        self, method: str, endpoint: str, headers: dict[str, str] | None = None, timeout_type:str ="default"
     ) -> Any:
         """Send an API request, handling retries, API keys and response errors."""
         logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class PokemonTCGAPI:
         logger.info(f"Trying '{method} {url}'")
 
         try:
-            async with AsyncClient(timeout=self.timeout) as client:
+            async with AsyncClient(timeout=self.timeouts[timeout_type]) as client:
                 response = await client.request(method, url, headers=headers)
 
             # Retry a server error once after a short delay.
@@ -53,7 +53,7 @@ class PokemonTCGAPI:
                 self.retried_request = True
 
                 await asyncio.sleep(2.5)
-                return await self._request(method, endpoint, headers)
+                return await self._request(method, endpoint, headers, timeout_type)
 
             self.retried_request = False
 
@@ -74,7 +74,7 @@ class PokemonTCGAPI:
                 self.key_number = self.key_number + 1
 
                 headers.pop("X-API-Key")
-                return await self._request(method, endpoint, headers)
+                return await self._request(method, endpoint, headers, timeout_type)
 
             response.raise_for_status()
 
@@ -94,17 +94,17 @@ class PokemonTCGAPI:
             return {"success": False, "error": str(error)}
 
     async def __get_all_pages(
-        self, method: str, endpoint: str, start_page: int = 1
+        self, method: str, endpoint: str, start_page: int = 1, timeout_type: str = "default"
     ) -> Any:
         """Retrieve all pages of results and combine them into one response."""
-        response = await self._request(method, f"{endpoint}&page={start_page}")
+        response = await self._request(method, f"{endpoint}&page={start_page}", {}, timeout_type)
 
         if not response["success"]:
             return response
 
         page = start_page + 1
         while True:
-            next_response = await self._request(method, f"{endpoint}&page={page}")
+            next_response = await self._request(method, f"{endpoint}&page={page}", {}, timeout_type)
 
             if not next_response["success"]:
                 return next_response
@@ -123,12 +123,12 @@ class PokemonTCGAPI:
 
     async def get_set(self, set_id: int) -> Any:
         """Retrieve a specific set by its ID."""
-        return await self._request("GET", f"/v1/sets/{set_id}")
+        return await self._request("GET", f"/v1/sets/{set_id}", {}, "card_list")
 
     async def get_cards(self, set_id: int, start_page: int = 1) -> Any:
         """Retrieve all cards belonging to a set."""
         return await self.__get_all_pages(
-            "GET", f"/v1/sets/{set_id}/cards?per_page=100", start_page
+            "GET", f"/v1/sets/{set_id}/cards?per_page=100", start_page, "card_list"
         )
 
     async def get_card(self, card_id: int) -> Any:
@@ -145,7 +145,7 @@ class PokemonTCGAPI:
 
         try:
             logger.info(f"Trying 'GET {image_url}'")
-            async with AsyncClient(timeout=self.timeout) as client:
+            async with AsyncClient(timeout=self.timeouts["image"]) as client:
                 response: Response = await client.get(image_url)
 
             if response.status_code == 404:

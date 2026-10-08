@@ -453,7 +453,7 @@ class Card_operations:
 
     def delete_card_and_properties(self, db_context: Connection, card_id: int) -> bool:
         """Delete a card and all associated images and variants."""
-        if not self.get_image(db_context, card_id) is None:
+        if self.get_image(db_context, card_id) is not None:
             if not self.delete_image(db_context, card_id):
                 return False
 
@@ -461,7 +461,7 @@ class Card_operations:
             if not self.delete_variants(db_context, card_id):
                 return False
 
-        if not self.get_card_by_id(db_context, card_id) is None:
+        if self.get_card_by_id(db_context, card_id) is not None:
             if not self.delete_card(db_context, card_id):
                 return False
 
