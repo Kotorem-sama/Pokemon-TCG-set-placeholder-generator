@@ -1,26 +1,35 @@
-from config import API_KEYS, BASE_URL, TIMEOUT
-from httpx import AsyncClient, Response
-from typing import Any
-from re import findall
-from time import sleep
+import asyncio
 import logging
+from re import findall
+from typing import Any
+
+from httpx import AsyncClient, HTTPStatusError, RequestError, Response
+
+from config import API_KEYS, BASE_URL, TIMEOUT
+
 
 class PokemonTCGAPI:
     def __init__(self) -> None:
-        self.api_keys:list[str] = API_KEYS
+        self.api_keys: list[str] = API_KEYS
         self.base_url = BASE_URL
         self.timeout = TIMEOUT
         self.key_number = 0
+        self.retried_request = False
 
-    async def _request(self, method:str, endpoint:str, headers: dict[str, str] | None = None) -> Any:
+    async def _request(
+        self, method: str, endpoint: str, headers: dict[str, str] | None = None
+    ) -> Any:
         logger = logging.getLogger(__name__)
 
         if not self.api_keys:
-            return { "success": False, "error": "" }
+            return {"success": False, "error": ""}
 
         if self.key_number > len(self.api_keys) - 1:
-            logger.error("All API keys have run out of tokens. Please wait until tomorrow to try again, or add a new key in the .env file.")
-            return { "success": False, "error": ""}
+            logger.error(
+                "All API keys have run out of tokens."
+                "Please wait until tomorrow to try again, or add a new key in the .env file."
+            )
+            return {"success": False, "error": ""}
 
         headers = {} if headers is None else headers
         headers["X-API-Key"] = self.api_keys[self.key_number]
@@ -32,28 +41,61 @@ class PokemonTCGAPI:
             async with AsyncClient(timeout=self.timeout) as client:
                 response = await client.request(method, url, headers=headers)
 
-            if response.status_code in [401, 429]:
-                self.key_number = self.key_number + 1
-                headers.pop("X-API-Key")
+            if (
+                findall(r"\b5\d{2}\b", str(response.status_code))
+                and not self.retried_request
+            ):
+                logger.warning("There has been a server error. Trying ahain")
+                self.retried_request = True
+
+                await asyncio.sleep(2.5)
                 return await self._request(method, endpoint, headers)
 
-            if findall(r"\b5\d{2}\b", str(response.status_code)):
-                sleep(5)
+            self.retried_request = False
+
+            if response.status_code == 401:
+                logger.warning(
+                    "401: The request got denied due to a failty API key."
+                    "Trying again with a different key if there is another."
+                )
+
+            if response.status_code == 429:
+                logger.warning(
+                    "429: The request got denied due to the API key having run out of tokens."
+                    "Trying again with a different key if there is another."
+                )
+
+            if response.status_code in [401, 429]:
+                self.key_number = self.key_number + 1
+
+                headers.pop("X-API-Key")
                 return await self._request(method, endpoint, headers)
 
             response.raise_for_status()
 
-            return { "success": True, "data": response.json()["data"] }
-        
-        except Exception as error:
-            return { "success": False, "error": str(error) }
+            logger.info(f"The call has succeeded with code: {response.status_code}")
+            return {"success": True, "data": response.json()["data"]}
 
-    async def __get_all_pages(self, method:str, endpoint:str, start_page:int = 1) -> Any:
+        except HTTPStatusError as error:
+            logger.warning("API returned an unsuccessful status: %s", error)
+            return {"success": False, "error": str(error)}
+
+        except RequestError as error:
+            logger.warning("API request failed: %s", error)
+            return {"success": False, "error": str(error)}
+
+        except (KeyError, ValueError) as error:
+            logger.warning("Failed to parse API response: %s", error)
+            return {"success": False, "error": str(error)}
+
+    async def __get_all_pages(
+        self, method: str, endpoint: str, start_page: int = 1
+    ) -> Any:
         response = await self._request(method, f"{endpoint}&page={start_page}")
 
         if not response["success"]:
             return response
-        
+
         page = start_page + 1
         while True:
             next_response = await self._request(method, f"{endpoint}&page={page}")
@@ -61,10 +103,10 @@ class PokemonTCGAPI:
             if not next_response["success"]:
                 return next_response
 
-            if next_response['data'] == []:
+            if next_response["data"] == []:
                 break
-            
-            response['data'].extend(next_response['data'])
+
+            response["data"].extend(next_response["data"])
             page += 1
 
         return response
@@ -75,8 +117,10 @@ class PokemonTCGAPI:
     async def get_set(self, set_id: int) -> Any:
         return await self._request("GET", f"/v1/sets/{set_id}")
 
-    async def get_cards(self, set_id:int, start_page:int = 1) -> Any:
-        return await self.__get_all_pages("GET", f"/v1/sets/{set_id}/cards?per_page=100", start_page)
+    async def get_cards(self, set_id: int, start_page: int = 1) -> Any:
+        return await self.__get_all_pages(
+            "GET", f"/v1/sets/{set_id}/cards?per_page=100", start_page
+        )
 
     async def get_card(self, card_id: int) -> Any:
         return await self._request("GET", f"/v1/cards/{card_id}")
@@ -84,18 +128,20 @@ class PokemonTCGAPI:
     async def get_card_prices(self, card_id: int) -> Any:
         return await self._request("GET", f"/v1/cards/{card_id}/prices")
 
-    async def get_image(self, image_url:str) -> Any:
+    async def get_image(self, image_url: str) -> Any:
+        logger = logging.getLogger(__name__)
+
         try:
+            logger.info(f"Trying 'GET {image_url}'")
             async with AsyncClient(timeout=self.timeout) as client:
                 response: Response = await client.get(image_url)
 
             if response.status_code == 404:
+                logger.warning("404: Image does not exist.")
+
                 return {
                     "success": True,
-                    "data": {
-                        "image_data": None,
-                        "content_type": "False"
-                    }
+                    "data": {"image_data": None, "content_type": "False"},
                 }
 
             response.raise_for_status()
@@ -103,21 +149,22 @@ class PokemonTCGAPI:
             content_type = response.headers.get("Content-Type")
 
             if content_type is None:
+                logger.warning("Image response did not contain a Content-Type header.")
                 return {
                     "success": False,
-                    "error": "Image response did not contain a Content-Type header."
+                    "error": "",
                 }
 
+            logger.info("Succesfully obtained the image!")
             return {
                 "success": True,
-                "data": {
-                    "image_data": response.content,
-                    "content_type": content_type
-                }
+                "data": {"image_data": response.content, "content_type": content_type},
             }
 
-        except Exception as error:
-            return {
-                "success": False,
-                "error": str(error)
-            }
+        except HTTPStatusError as error:
+            logger.warning("Image request returned an unsuccessful status: %s", error)
+            return {"success": False, "error": str(error)}
+
+        except RequestError as error:
+            logger.warning("Image request failed: %s", error)
+            return {"success": False, "error": str(error)}

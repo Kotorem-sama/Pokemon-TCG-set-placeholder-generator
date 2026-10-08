@@ -1,11 +1,11 @@
-from sqlite3 import Connection, connect, Row
 import logging
+from sqlite3 import Connection, Row, connect
 
 
 class DatabaseSetup:
     """Handles SQLite database connections, initialization and maintenance."""
 
-    def __init__(self, database_path:str):
+    def __init__(self, database_path: str):
         """Initialize the database setup with the database file path."""
         self.database_path = database_path
 
@@ -31,10 +31,10 @@ class DatabaseSetup:
             logger.error(f"The integrity check came back negative: {check[0]}")
         else:
             logger.info("The integrity check has succeeded.")
-        
+
         return check[0] == "ok"
-        
-    def initialise_db(self, db_context:Connection) -> Connection:
+
+    def initialise_db(self, db_context: Connection) -> Connection:
         """Create the database tables if they do not already exist."""
         cursor = db_context.cursor()
 
@@ -72,10 +72,10 @@ class DatabaseSetup:
         )""")
 
         db_context.commit()
-        
+
         return db_context
 
-    def reset_db(self, db_context:Connection, databases:list[str] | None = None):
+    def reset_db(self, db_context: Connection, databases: list[str] | None = None):
         """Drop the selected database tables and recreate the database structure."""
         cursor = db_context.cursor()
         if databases is None:
@@ -85,5 +85,5 @@ class DatabaseSetup:
             cursor.execute(f"""DROP TABLE IF EXISTS {table}""")
 
         db_context.commit()
-        
+
         self.initialise_db(db_context)

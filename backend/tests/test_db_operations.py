@@ -1,11 +1,12 @@
-import pytest
-from sqlite3 import Connection
-from database.db_setup import DatabaseSetup
-from database.db_operations import Set_operations, Card_operations
-from classes import Set, Card
-
-
 from collections.abc import Generator
+from sqlite3 import Connection
+
+import pytest
+
+from classes import Card, Set
+from database.db_operations import Card_operations, Set_operations
+from database.db_setup import DatabaseSetup
+
 
 @pytest.fixture
 def db_context() -> Generator[Connection, None, None]:
@@ -30,34 +31,22 @@ def card_operations() -> Card_operations:
 
 @pytest.fixture
 def test_set() -> Set:
-    return Set(
-        1,
-        "Test Set",
-        "test-set",
-        "TST",
-        "2026-01-01",
-        3,
-        0
-    )
+    return Set(1, "Test Set", "test-set", "TST", "2026-01-01", 3, 0)
 
 
 @pytest.fixture
 def test_card() -> Card:
-    return Card(
-        1,
-        1,
-        "Test Card",
-        "001",
-        "Common",
-        []
-    )
+    return Card(1, 1, "Test Card", "001", "Common", [])
 
 
 # -------------------------
 # Set tests
 # -------------------------
 
-def test_add_and_get_set(db_context: Connection, set_operations: Set_operations, test_set: Set):
+
+def test_add_and_get_set(
+    db_context: Connection, set_operations: Set_operations, test_set: Set
+):
     assert set_operations.add_set(db_context, test_set) is True
 
     result = set_operations.get_set_by_id(db_context, 1)
@@ -68,7 +57,9 @@ def test_add_and_get_set(db_context: Connection, set_operations: Set_operations,
     assert result.slug == "test-set"
 
 
-def test_get_set_by_slug(db_context: Connection, set_operations: Set_operations, test_set: Set):
+def test_get_set_by_slug(
+    db_context: Connection, set_operations: Set_operations, test_set: Set
+):
     set_operations.add_set(db_context, test_set)
 
     result = set_operations.get_set_by_slug(db_context, "test-set")
@@ -77,7 +68,9 @@ def test_get_set_by_slug(db_context: Connection, set_operations: Set_operations,
     assert result.id == 1
 
 
-def test_get_sets_by_year(db_context: Connection, set_operations: Set_operations, test_set: Set):
+def test_get_sets_by_year(
+    db_context: Connection, set_operations: Set_operations, test_set: Set
+):
     set_operations.add_set(db_context, test_set)
 
     result = set_operations.get_sets_by_year(db_context, 2026)
@@ -86,7 +79,9 @@ def test_get_sets_by_year(db_context: Connection, set_operations: Set_operations
     assert result[0].name == "Test Set"
 
 
-def test_update_set(db_context: Connection, set_operations: Set_operations, test_set: Set):
+def test_update_set(
+    db_context: Connection, set_operations: Set_operations, test_set: Set
+):
     set_operations.add_set(db_context, test_set)
 
     test_set.name = "Updated Set"
@@ -99,7 +94,9 @@ def test_update_set(db_context: Connection, set_operations: Set_operations, test
     assert result.name == "Updated Set"
 
 
-def test_delete_set(db_context: Connection, set_operations: Set_operations, test_set: Set):
+def test_delete_set(
+    db_context: Connection, set_operations: Set_operations, test_set: Set
+):
     set_operations.add_set(db_context, test_set)
 
     assert set_operations.delete_set(db_context, 1) is True
@@ -111,12 +108,13 @@ def test_delete_set(db_context: Connection, set_operations: Set_operations, test
 # Card tests
 # -------------------------
 
+
 def test_add_and_get_card(
     db_context: Connection,
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
 
@@ -135,7 +133,7 @@ def test_get_cards_by_set(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
@@ -151,7 +149,7 @@ def test_get_cards_by_rarity(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
@@ -167,7 +165,7 @@ def test_update_card(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
@@ -187,7 +185,7 @@ def test_delete_card(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
@@ -201,21 +199,18 @@ def test_delete_card(
 # Variant tests
 # -------------------------
 
+
 def test_add_and_get_variant(
     db_context: Connection,
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
 
-    assert card_operations.add_variant(
-        db_context,
-        1,
-        "Normal"
-    ) is True
+    assert card_operations.add_variant(db_context, 1, "Normal") is True
 
     result = card_operations.get_variants(db_context, 1)
 
@@ -227,7 +222,7 @@ def test_get_variant_types_in_set(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
@@ -245,18 +240,14 @@ def test_delete_variant(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
 
     card_operations.add_variant(db_context, 1, "Normal")
 
-    assert card_operations.delete_variant(
-        db_context,
-        1,
-        "Normal"
-    ) is True
+    assert card_operations.delete_variant(db_context, 1, "Normal") is True
 
     assert card_operations.get_variants(db_context, 1) == []
 
@@ -265,12 +256,13 @@ def test_delete_variant(
 # Image tests
 # -------------------------
 
+
 def test_save_and_get_image(
     db_context: Connection,
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
@@ -278,12 +270,7 @@ def test_save_and_get_image(
     image_data = b"fake image data"
     content_type = "image/png"
 
-    assert card_operations.save_image(
-        db_context,
-        1,
-        image_data,
-        content_type
-    ) is True
+    assert card_operations.save_image(db_context, 1, image_data, content_type) is True
 
     result = card_operations.get_image(db_context, 1)
 
@@ -306,17 +293,12 @@ def test_delete_image(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
 
-    card_operations.save_image(
-        db_context,
-        1,
-        b"fake image data",
-        "image/png"
-    )
+    card_operations.save_image(db_context, 1, b"fake image data", "image/png")
 
     assert card_operations.delete_image(db_context, 1) is True
 
@@ -327,23 +309,19 @@ def test_delete_image(
 # Cascade tests
 # -------------------------
 
+
 def test_delete_card_cascades_variants_and_image(
     db_context: Connection,
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)
 
     card_operations.add_variant(db_context, 1, "Normal")
-    card_operations.save_image(
-        db_context,
-        1,
-        b"fake image data",
-        "image/png"
-    )
+    card_operations.save_image(db_context, 1, b"fake image data", "image/png")
 
     assert card_operations.delete_card(db_context, 1) is True
 
@@ -356,7 +334,7 @@ def test_delete_set_cascades_cards(
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
-    test_card: Card
+    test_card: Card,
 ):
     set_operations.add_set(db_context, test_set)
     card_operations.add_card(db_context, test_card)

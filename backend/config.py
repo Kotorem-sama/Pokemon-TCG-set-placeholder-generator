@@ -1,5 +1,8 @@
+import logging
+import os
+import re
+
 from dotenv import load_dotenv
-import logging, re, os
 
 logger = logging.getLogger(__name__)
 

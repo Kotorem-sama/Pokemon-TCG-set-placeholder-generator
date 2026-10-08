@@ -1,10 +1,17 @@
-from api.pokemon_tcg_api import PokemonTCGAPI
-from database.db_operations import Set_operations, Card_operations, Set, Connection, Card
 from datetime import date, timedelta
 from typing import Any
 
-class SyncService:
+from api.pokemon_tcg_api import PokemonTCGAPI
+from database.db_operations import (
+    Card,
+    Card_operations,
+    Connection,
+    Set,
+    Set_operations,
+)
 
+
+class SyncService:
     def __init__(self) -> None:
         self.set_operations = Set_operations()
         self.pokemontcgapi = PokemonTCGAPI()
@@ -30,14 +37,14 @@ class SyncService:
                 if not self.set_operations.add_set(db_context, new_set):
                     print("Failed to add set to database")
                     return database_sets
-                
+
                 database_sets.append(new_set)
 
         print("Syncing sets complete!")
 
         return database_sets
 
-    async def sync_set_info(self, db_context:Connection, set_id:int) -> Set | None:
+    async def sync_set_info(self, db_context: Connection, set_id: int) -> Set | None:
         print("Syncing set information...")
 
         api_response = await self.pokemontcgapi.get_set(set_id)
@@ -49,7 +56,7 @@ class SyncService:
 
         if updated_set.id == 0 and updated_set.sync_complete == 9:
             return None
-        
+
         if not (self.set_operations.update_set(db_context, updated_set)):
             print("Failed to update the set data to the database.")
             return None
@@ -58,7 +65,9 @@ class SyncService:
 
         return updated_set
 
-    async def sync_image(self, db_context:Connection, image_url:str, card_id:int) -> bool:
+    async def sync_image(
+        self, db_context: Connection, image_url: str, card_id: int
+    ) -> bool:
         response = await self.pokemontcgapi.get_image(image_url)
 
         if not response["success"]:
@@ -69,13 +78,18 @@ class SyncService:
             print("Failed to retreive image from card")
             return False
 
-        if not self.card_operations.save_image(db_context, card_id, response["data"]["image_data"], response["data"]["content_type"]):
+        if not self.card_operations.save_image(
+            db_context,
+            card_id,
+            response["data"]["image_data"],
+            response["data"]["content_type"],
+        ):
             print("Failed to save image to database")
             return False
 
         return True
 
-    async def sync_card_variants(self, db_context:Connection, card_id:int) -> bool:
+    async def sync_card_variants(self, db_context: Connection, card_id: int) -> bool:
         api_response = await self.pokemontcgapi.get_card_prices(card_id)
 
         if not api_response["success"]:
@@ -83,12 +97,13 @@ class SyncService:
             return False
 
         for variant in api_response["data"]:
-            
-            if not self.card_operations.add_variant(db_context, card_id, variant["printing"]):
+            if not self.card_operations.add_variant(
+                db_context, card_id, variant["printing"]
+            ):
                 print("Failed to add card variant to database.")
                 self.card_operations.delete_variants(db_context, card_id)
                 return False
-        
+
         return True
 
     def is_card(self, card: dict[str, Any]) -> bool:
@@ -111,8 +126,16 @@ class SyncService:
 
         return False
 
-    async def sync_cards_in_set(self, db_context:Connection, set_id:int, db_set_cards:list[Card], refresh_existing_cards: bool) -> bool:
-        start_page = 1 if refresh_existing_cards else ((len(db_set_cards) - 5) // 100) + 1
+    async def sync_cards_in_set(
+        self,
+        db_context: Connection,
+        set_id: int,
+        db_set_cards: list[Card],
+        refresh_existing_cards: bool,
+    ) -> bool:
+        start_page = (
+            1 if refresh_existing_cards else ((len(db_set_cards) - 5) // 100) + 1
+        )
         start_page = start_page if start_page > 0 else 1
 
         api_response = await self.pokemontcgapi.get_cards(set_id, start_page)
@@ -121,19 +144,21 @@ class SyncService:
         if not api_response["success"]:
             print(api_response["error"])
             return False
-        
-        for card in api_response['data']:
+
+        for card in api_response["data"]:
             if not self.is_card(card):
                 continue
 
             if refresh_existing_cards and card["id"] in db_card_id:
-                if not self.card_operations.delete_card_and_properties(db_context, card["id"]):
+                if not self.card_operations.delete_card_and_properties(
+                    db_context, card["id"]
+                ):
                     return False
 
                 db_card_id.remove(card["id"])
 
             if card["id"] not in db_card_id:
-                print(f"Adding card {card["number"]}")
+                print(f"Adding card {card['number']}")
                 new_card = Card.from_api_to_Card(card, set_id)
 
                 if new_card.id == 0 and new_card.set_id == 0:
@@ -144,22 +169,22 @@ class SyncService:
                     return False
 
             if not self.card_operations.get_image(db_context, card["id"]):
-                print(f"Getting the card image...")
+                print("Getting the card image...")
 
                 if not await self.sync_image(db_context, card["image_url"], card["id"]):
                     return False
 
             variants = self.card_operations.get_variants(db_context, card["id"])
-                
+
             if not variants:
-                print(f"Getting the card variants...")
-                
+                print("Getting the card variants...")
+
                 if not await self.sync_card_variants(db_context, card["id"]):
                     return False
-        
+
         return True
 
-    async def sync_set(self, db_context:Connection, set_id:int) -> Set | None:
+    async def sync_set(self, db_context: Connection, set_id: int) -> Set | None:
         db_set = self.set_operations.get_set_by_id(db_context, set_id)
         if db_set is None:
             print("Unable to find set in the database.")
@@ -181,9 +206,11 @@ class SyncService:
 
         if db_set.sync_complete == 0 or within_sync_window:
             print("Syncing cards in the set...")
-            if not await self.sync_cards_in_set(db_context, set_id, db_set_cards, within_sync_window):
+            if not await self.sync_cards_in_set(
+                db_context, set_id, db_set_cards, within_sync_window
+            ):
                 return None
-        
+
         db_set.sync_complete = 1
         if not self.set_operations.update_set(db_context, db_set):
             print("Failed to finish updating a set to the database.")
