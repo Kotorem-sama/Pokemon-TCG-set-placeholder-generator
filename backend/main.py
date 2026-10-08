@@ -1,14 +1,16 @@
 from database.db_setup import DatabaseSetup as database
-import pytest, sys, asyncio
-from services.SyncService import SyncService
+import pytest, asyncio, logging
 from initializer import startup
+from services.SyncService import SyncService
 
 async def main():
-    await tests()
+    """Initialize the application, run tests and synchronize TCG sets."""
 
     database_path = startup()
     if database_path is None:
         quit()
+
+    await tests()
 
     db = database(database_path)
     db_context = db.initialise_db(db.connect_db())
@@ -18,13 +20,19 @@ async def main():
     db_context.close()
 
 async def tests():
+    """Run the project's unit tests and stop the application on failure."""
+    
+    logger = logging.getLogger(__name__)
+    logger.info("Executing unit tests...")
+
     test_result = pytest.main(["tests"])
     
     if test_result != 0:
-        print("Tests failed.")
-        sys.exit(test_result)
+        logger.error(f"Unit tests came back with an error: {test_result}")
+        quit()
 
-    print("All tests passed.")
+    logger.info("Tests have successfully been conducted!")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,16 +1,33 @@
 from pathlib import Path
 from database.db_setup import DatabaseSetup as database
-import subprocess
-import sys
+from logging import Logger as LoggerModel
+import subprocess, sys, logging
 
 def startup() -> str | None:
-    BACKEND_DIR = Path(__file__).resolve().parent
-    DATABASE_DIR = BACKEND_DIR / "database"
-    DATABASE_PATH = DATABASE_DIR / "pokemon_cards.db"
+    """Set up logging, dependencies and the database before starting the application."""
+    logger = setup_logging()
+    
+    if not install_dependencies(logger):
+        return None
 
-    DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+    return setup_database(logger)
 
-    requirements_file = BACKEND_DIR / "requirements.txt"
+def setup_logging() -> LoggerModel:
+    """Configure application logging for both the console and log file."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('pokemon_tcg_sync.log'),
+            logging.StreamHandler()  # Console output
+        ]
+    )
+    return logging.getLogger(__name__)
+
+def install_dependencies(logger: LoggerModel) -> bool:
+    """Install the project's dependencies from requirements.txt."""
+    BACKEND_DIR: Path = Path(__file__).resolve().parent
+    logger.info("Installing dependencies...")
 
     try:
         subprocess.run(
@@ -20,16 +37,28 @@ def startup() -> str | None:
                 "pip",
                 "install",
                 "-r",
-                str(requirements_file)
+                str(BACKEND_DIR / "requirements.txt")
             ],
             check=True,
             capture_output=True,
             text=True
         )
+        logger.info(f"Installed dependencies succesfully.")
+        return True
+    
     except subprocess.CalledProcessError as error:
-        print("Failed to install dependencies:")
-        print(error.stderr)
-        return None
+        logger.error(f"Failed to install dependencies: {error.stderr}")
+        return False
+
+def setup_database(logger: LoggerModel) -> str | None:
+    """Create and validate the application's SQLite database."""
+    BACKEND_DIR: Path = Path(__file__).resolve().parent
+    DATABASE_DIR = BACKEND_DIR / "database"
+    DATABASE_PATH = DATABASE_DIR / "pokemon_cards.db"
+
+    DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Setting up the database.")
 
     if not DATABASE_PATH.exists():
         db = database(str(DATABASE_PATH))
@@ -38,9 +67,11 @@ def startup() -> str | None:
     
     db = database(str(DATABASE_PATH))
     if not db.integrity_check():
-        print("Failed to initialise database. Please try again later.")
+        logger.error("Failed to initialise database. Please try again later.")
         Path.unlink(DATABASE_PATH)
 
         return None
+
+    logger.info("Initialised the database succesfully!")
 
     return str(DATABASE_PATH)

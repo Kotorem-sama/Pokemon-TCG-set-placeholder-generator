@@ -3,6 +3,7 @@ from httpx import AsyncClient, Response
 from typing import Any
 from re import findall
 from time import sleep
+import logging
 
 class PokemonTCGAPI:
     def __init__(self) -> None:
@@ -12,16 +13,20 @@ class PokemonTCGAPI:
         self.key_number = 0
 
     async def _request(self, method:str, endpoint:str, headers: dict[str, str] | None = None) -> Any:
-        url = f"{self.base_url}{endpoint}"
+        logger = logging.getLogger(__name__)
 
         if not self.api_keys:
-            return { "success": False, "error": "No API key has been set. Please fill in an API key in the .env file." }
+            return { "success": False, "error": "" }
 
-        if self.key_number >= len(self.api_keys):
-            return { "success": False, "error": "All API keys have run out of available tokens. Please wait till tomorrow to try again, or add a new key in the .env file."}
+        if self.key_number > len(self.api_keys) - 1:
+            logger.error("All API keys have run out of tokens. Please wait until tomorrow to try again, or add a new key in the .env file.")
+            return { "success": False, "error": ""}
 
         headers = {} if headers is None else headers
         headers["X-API-Key"] = self.api_keys[self.key_number]
+
+        url = f"{self.base_url}{endpoint}"
+        logger.info(f"Trying '{method} {url}'")
 
         try:
             async with AsyncClient(timeout=self.timeout) as client:

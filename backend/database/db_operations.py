@@ -1,23 +1,24 @@
 from sqlite3 import Connection
 from sqlite3 import Error as db_error
 from classes import Set, Card
+import logging
 
 class Set_operations:
     def __get_set_from_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> Set | None:
-            cursor = db_context.cursor()
-    
-            cursor.execute(f"""SELECT * FROM sets WHERE {query}""", values)
-            set_row = cursor.fetchone()
-            if set_row is None:
-                return None
-            
-            return Set(set_row["id"],
-                       set_row["name"],
-                       set_row["slug"],
-                       set_row["abbreviation"],
-                       set_row["release_date"],
-                       set_row["card_count"],
-                       set_row["sync_complete"])
+        cursor = db_context.cursor()
+
+        cursor.execute(f"""SELECT * FROM sets WHERE {query}""", values)
+        set_row = cursor.fetchone()
+        if set_row is None:
+            return None
+        
+        return Set(set_row["id"],
+                    set_row["name"],
+                    set_row["slug"],
+                    set_row["abbreviation"],
+                    set_row["release_date"],
+                    set_row["card_count"],
+                    set_row["sync_complete"])
         
     def __get_sets_from_query(self, db_context: Connection, query:str, values:dict[str, str | int | None]) -> list[Set]:
         cursor = db_context.cursor()
@@ -38,6 +39,9 @@ class Set_operations:
         return set_list
     
     def add_set(self, db_context: Connection, new_set: Set) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Adding set {new_set} to the database.")
+
         cursor = db_context.cursor()
 
         try:
@@ -45,12 +49,13 @@ class Set_operations:
             (id, name, slug, abbreviation, release_date, card_count, sync_complete)            
             VALUES(:id, :name, :slug, :abbreviation, :release_date, :card_count, :sync_complete)"""
                            , new_set.get_dict())
-
             db_context.commit()
-        except db_error as error:
-            print(f"Failed to insert set: {error}")
 
+        except db_error as error:
+            logger.warning(f"Failed to insert set into the database: {error}.")
             return False
+        
+        logger.info("Succesfully added set to the database!")
         return True
 
     def get_sets_by_year(self, db_context: Connection, year:int) -> list[Set]:
@@ -70,6 +75,8 @@ class Set_operations:
         return self.__get_set_from_query(db_context, "name LIKE :name", {"name": f"%{name}%"})
     
     def update_set(self, db_context: Connection, updated_set: Set) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Updating set {updated_set} to the database.")
         cursor = db_context.cursor()
 
         try:
@@ -94,21 +101,25 @@ class Set_operations:
             db_context.commit()
 
         except db_error as error:
-            print(f"Failed to update set: {error}")
+            logger.warning(f"Failed to update set in the database: {error}.")
             return False
 
+        logger.info("Succesfully updated set in the database.")
         return True
 
     def delete_set(self, db_context: Connection, set_id:int) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Attempting to delete set '{set_id}' from the database.")
         cursor = db_context.cursor()
 
         try:
             cursor.execute("""DELETE FROM sets WHERE id=(:id)""", {"id" : set_id})
             db_context.commit()
         except db_error as error:
-            print(f"Failed to delete set: {error}")
+            logger.warning(f"Failed to delete set from the database: {error}.")
             return False
 
+        logger.info("Succesfully deleted the set from the database!")
         return True
 
     def is_set_complete(self, db_context: Connection, current_set:Set) -> bool:
@@ -151,6 +162,8 @@ class Card_operations:
         return card_list
     
     def add_card(self, db_context: Connection, new_card: Card) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Adding card '{new_card}' to the database.")
         cursor = db_context.cursor()
 
         try:
@@ -158,12 +171,13 @@ class Card_operations:
             (id, set_id, name, number, rarity)            
             VALUES(:id, :set_id, :name, :number, :rarity)
             """, new_card.get_dict())
-
             db_context.commit()
-        except db_error as error:
-            print(f"Failed to insert card: {error}")
 
+        except db_error as error:
+            logger.warning(f"Failed to insert card into the database: {error}.")
             return False
+
+        logger.info("Succesfully added card to the database!")
         return True
 
     def get_all_cards(self, db_context: Connection) -> list[Card]:
@@ -179,6 +193,8 @@ class Card_operations:
         return self.__get_card_by_query(db_context, "id = :id", {"id": id})
 
     def update_card(self, db_context: Connection, updated_card: Card) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Updating {self.update_card} in the database.")
         cursor = db_context.cursor()
 
         try:
@@ -195,25 +211,29 @@ class Card_operations:
                 "number": updated_card.number,
                 "rarity": updated_card.rarity
             })
-
             db_context.commit()
 
         except db_error as error:
-            print(f"Failed to update card: {error}")
+            logger.warning(f"Failed to update card in the database: {error}.")
             return False
 
+        logger.info("Succesfully update card in the database!")
         return True
 
     def delete_card(self, db_context: Connection, card_id:int) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Deleting card '{card_id}' from the database.")
         cursor = db_context.cursor()
 
         try:
             cursor.execute("""DELETE FROM cards WHERE id=(:id)""", {"id" : card_id})
             db_context.commit()
+
         except db_error as error:
-            print(f"Failed to delete card: {error}")
+            logger.warning(f"Failed to delete card from the database: {error}.")
             return False
 
+        logger.info("Succesfully deleted card from the database!")
         return True
 
     # Card variant operations starts here
@@ -230,16 +250,20 @@ class Card_operations:
         return variants_list
 
     def add_variant(self, db_context: Connection, card_id:int, variant:str) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Adding card variant of card '{card_id}' to the database.")
         cursor = db_context.cursor()
         
         try:
             cursor.execute("""INSERT INTO card_variants (card_id, variant) VALUES (:card_id, :variant)""",
                            {"card_id": card_id, "variant": variant})
             db_context.commit()
+
         except db_error as error:
-            print(f"Failed to add variant: {error}")
+            logger.warning(f"Failed to add variant to the database: {error}.")
             return False
 
+        logger.info("Succesfully added variant to the database.")
         return True
 
     def get_variants(self, db_context: Connection, card_id:int) -> list[str]:
@@ -251,15 +275,19 @@ class Card_operations:
                                             WHERE cards.set_id = :set_id""", {"set_id": set_id})
 
     def delete_variant(self, db_context: Connection, card_id:int, variant:str) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info("Deleting variant '%s' from card '%s'", variant, card_id)
         cursor = db_context.cursor()
 
         try:
             cursor.execute("""DELETE FROM card_variants WHERE (card_id, variant)=(:card_id, :variant)""", {"card_id": card_id, "variant": variant})
             db_context.commit()
+
         except db_error as error:
-            print(f"Failed to delete variant: {error}")
+            logger.warning(f"Failed to delete variant from database: {error}.")
             return False
 
+        logger.info("Succesfully deleted variant from the database.")
         return True
 
     def delete_variants(self, db_context:Connection, card_id:int) -> bool:
@@ -275,16 +303,20 @@ class Card_operations:
 
     # Card image operations
     def save_image(self, db_context: Connection, card_id:int, image_data:bytes, content_type:str) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Adding card image of card '{card_id}' to the database.")
         cursor = db_context.cursor()
         
         try:
             cursor.execute("""INSERT INTO card_images (card_id, image_data, content_type) VALUES (:card_id, :image_data, :content_type)""",
                             {"card_id": card_id, "image_data": image_data, "content_type": content_type})
             db_context.commit()
+
         except db_error as error:
-            print(f"Failed to add image: {error}")
+            logger.warning(f"Failed to add image to the database: {error}.")
             return False
 
+        logger.info("Succesfully added image to the database.")
         return True
 
     def get_image(self, db_context: Connection, card_id:int) -> tuple[bytes, str] | None:
@@ -298,15 +330,19 @@ class Card_operations:
         return image["image_data"], image["content_type"]
 
     def delete_image(self, db_context: Connection, card_id:int) -> bool:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Deleting image of card '{card_id}' from the database.")
         cursor = db_context.cursor()
         
         try:
             cursor.execute("""DELETE FROM card_images WHERE card_id=:card_id""", {"card_id": card_id})
             db_context.commit()
+
         except db_error as error:
-            print(f"Failed to delete image: {error}")
+            logger.warning(f"Failed to delete image from the database: {error}.")
             return False
 
+        logger.info("Succesfully deleted image from the database")
         return True
 
     def delete_card_and_properties(self, db_context: Connection, card_id:int) -> bool:

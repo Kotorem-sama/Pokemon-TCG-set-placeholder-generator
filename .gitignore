@@ -3,3 +3,4 @@ __pycache__
 pokemon_cards.db
 /.vscode
 backend/.env
+backend/pokemon_tcg_sync.log

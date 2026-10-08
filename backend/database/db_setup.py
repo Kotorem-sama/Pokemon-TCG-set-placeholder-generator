@@ -1,4 +1,5 @@
 from sqlite3 import Connection, connect, Row
+import logging
 
 class DatabaseSetup:
 
@@ -12,12 +13,19 @@ class DatabaseSetup:
         return conn
 
     def integrity_check(self):
+        logger = logging.getLogger(__name__)
+        logger.info("Starting a database integrity check.")
+
         db_context = self.connect_db()
         cursor = db_context.cursor()
 
         check = cursor.execute("PRAGMA integrity_check").fetchone()
-
         db_context.close()
+
+        if check[0] != "Ok":
+            logger.error(f"The integrity check came back negative: {check[0]}")
+        else:
+            logger.info("The integrity check has succeeded.")
         
         return check[0] == "ok"
         
