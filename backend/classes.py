@@ -1,6 +1,7 @@
 from typing import Any
 import logging
 
+
 class Set:
     """Represents a Pokémon TCG set and its synchronisation status."""
 
@@ -48,7 +49,7 @@ class Set:
 
     def __str__(self):
         """Return a readable representation of the set."""
-        return f"{self.name} ({self.abbreviation})"
+        return f"{self.name} ({self.release_date})"
 
     def __repr__(self):
         """Use the readable string representation when displaying the object."""
@@ -103,7 +104,9 @@ class Card:
 
             return new_card
         except (KeyError, TypeError, ValueError) as error:
-            logger.warning(f"There has been an exception when creating a card: {error}.")
+            logger.warning(
+                f"There has been an exception when creating a card: {error}."
+            )
 
             # A special ID indicates that the API data could not be converted.
             new_card = cls(0, 0, "", None, None, None)

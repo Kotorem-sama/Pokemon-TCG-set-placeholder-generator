@@ -174,9 +174,7 @@ class PokemonTCGAPI:
 
             if content_type is None:
                 logger.warning("Image response did not contain a Content-Type header.")
-                return {
-                    "success": False
-                }
+                return {"success": False}
 
             logger.info("Succesfully obtained the image!")
             return {
