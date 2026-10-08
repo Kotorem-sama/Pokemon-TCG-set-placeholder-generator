@@ -13,3 +13,4 @@ __pycache__
 dist/
 build/
 .pytest_cache/
+pokemon_tcg_sync.log
