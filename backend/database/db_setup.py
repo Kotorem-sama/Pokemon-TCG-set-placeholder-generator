@@ -1,18 +1,23 @@
 from sqlite3 import Connection, connect, Row
 import logging
 
+
 class DatabaseSetup:
+    """Handles SQLite database connections, initialization and maintenance."""
 
     def __init__(self, database_path:str):
+        """Initialize the database setup with the database file path."""
         self.database_path = database_path
 
     def connect_db(self) -> Connection:
+        """Create and configure a connection to the SQLite database."""
         conn = connect(self.database_path)
         conn.execute("PRAGMA foreign_keys = ON")
         conn.row_factory = Row
         return conn
 
     def integrity_check(self):
+        """Check the integrity of the SQLite database."""
         logger = logging.getLogger(__name__)
         logger.info("Starting a database integrity check.")
 
@@ -30,6 +35,7 @@ class DatabaseSetup:
         return check[0] == "ok"
         
     def initialise_db(self, db_context:Connection) -> Connection:
+        """Create the database tables if they do not already exist."""
         cursor = db_context.cursor()
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
@@ -70,6 +76,7 @@ class DatabaseSetup:
         return db_context
 
     def reset_db(self, db_context:Connection, databases:list[str] | None = None):
+        """Drop the selected database tables and recreate the database structure."""
         cursor = db_context.cursor()
         if databases is None:
             databases = ["card_images", "card_variants", "cards", "sets"]
