@@ -1,5 +1,5 @@
 from typing import Any
-
+import logging
 
 class Set:
     """Represents a Pokémon TCG set and its synchronisation status."""
@@ -26,6 +26,7 @@ class Set:
     @classmethod
     def from_api_to_Set(cls, jsondata: Any):
         """Create a Set from API data, returning a fallback object if invalid."""
+        logger = logging.getLogger(__name__)
         try:
             new_set = cls(
                 jsondata["id"],
@@ -39,7 +40,7 @@ class Set:
 
             return new_set
         except (KeyError, TypeError, ValueError) as error:
-            print(error)
+            logger.warning(f"There has been an exception when creating a set: {error}.")
 
             # A special ID and status indicate that the API data could not be converted.
             new_set = cls(0, "", "", None, None, None, 9)
@@ -90,6 +91,7 @@ class Card:
     @classmethod
     def from_api_to_Card(cls, jsondata: Any, set_id: int):
         """Create a Card from API data, returning a fallback object if invalid."""
+        logger = logging.getLogger(__name__)
         try:
             new_card = cls(
                 jsondata["id"],
@@ -101,7 +103,7 @@ class Card:
 
             return new_card
         except (KeyError, TypeError, ValueError) as error:
-            print(error)
+            logger.warning(f"There has been an exception when creating a card: {error}.")
 
             # A special ID indicates that the API data could not be converted.
             new_card = cls(0, 0, "", None, None, None)

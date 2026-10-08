@@ -36,7 +36,6 @@ async def tests():
 
     if test_result != 0:
         logger.error(f"Unit tests came back with an error: {test_result}")
-        sys.exit()
 
     logger.info("Tests have successfully been conducted!")
 

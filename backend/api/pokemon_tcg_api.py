@@ -29,14 +29,14 @@ class PokemonTCGAPI:
         logger = logging.getLogger(__name__)
 
         if not self.api_keys:
-            return {"success": False, "error": ""}
+            return {"success": False}
 
         if self.key_number > len(self.api_keys) - 1:
             logger.error(
                 "All API keys have run out of tokens."
                 "Please wait until tomorrow to try again, or add a new key in the .env file."
             )
-            return {"success": False, "error": ""}
+            return {"success": False}
 
         headers = {} if headers is None else headers
         headers["X-API-Key"] = self.api_keys[self.key_number]
@@ -87,15 +87,15 @@ class PokemonTCGAPI:
 
         except HTTPStatusError as error:
             logger.warning("API returned an unsuccessful status: %s", error)
-            return {"success": False, "error": str(error)}
+            return {"success": False}
 
         except RequestError as error:
             logger.warning("API request failed: %s", error)
-            return {"success": False, "error": str(error)}
+            return {"success": False}
 
         except (KeyError, ValueError) as error:
             logger.warning("Failed to parse API response: %s", error)
-            return {"success": False, "error": str(error)}
+            return {"success": False}
 
     async def __get_all_pages(
         self,
@@ -175,8 +175,7 @@ class PokemonTCGAPI:
             if content_type is None:
                 logger.warning("Image response did not contain a Content-Type header.")
                 return {
-                    "success": False,
-                    "error": "",
+                    "success": False
                 }
 
             logger.info("Succesfully obtained the image!")
@@ -187,8 +186,8 @@ class PokemonTCGAPI:
 
         except HTTPStatusError as error:
             logger.warning("Image request returned an unsuccessful status: %s", error)
-            return {"success": False, "error": str(error)}
+            return {"success": False}
 
         except RequestError as error:
             logger.warning("Image request failed: %s", error)
-            return {"success": False, "error": str(error)}
+            return {"success": False}

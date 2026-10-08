@@ -71,10 +71,10 @@ class Set_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to insert set into the database: {error}.")
+            logger.warning(f"Failed to insert set '{new_set}' into the database: {error}.")
             return False
 
-        logger.info("Succesfully added set to the database!")
+        logger.info(f"Succesfully added set '{new_set}' to the database!")
         return True
 
     def get_sets_by_year(self, db_context: Connection, year: int) -> list[Set]:
@@ -135,10 +135,10 @@ class Set_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to update set in the database: {error}.")
+            logger.warning(f"Failed to update set '{updated_set}' in the database: {error}.")
             return False
 
-        logger.info("Succesfully updated set in the database.")
+        logger.info(f"Succesfully updated set '{updated_set}' in the database.")
         return True
 
     def delete_set(self, db_context: Connection, set_id: int) -> bool:
@@ -151,10 +151,10 @@ class Set_operations:
             cursor.execute("""DELETE FROM sets WHERE id=(:id)""", {"id": set_id})
             db_context.commit()
         except db_error as error:
-            logger.warning(f"Failed to delete set from the database: {error}.")
+            logger.warning(f"Failed to delete set '{set_id}' from the database: {error}.")
             return False
 
-        logger.info("Succesfully deleted the set from the database!")
+        logger.info(f"Succesfully deleted the set '{set_id}' from the database!")
         return True
 
     def is_set_complete(self, db_context: Connection, current_set: Set) -> bool:
@@ -223,10 +223,10 @@ class Card_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to insert card into the database: {error}.")
+            logger.warning(f"Failed to insert card '{new_card}' into the database: {error}.")
             return False
 
-        logger.info("Succesfully added card to the database!")
+        logger.info(f"Succesfully added card '{new_card}' to the database!")
         return True
 
     def get_all_cards(self, db_context: Connection) -> list[Card]:
@@ -252,7 +252,7 @@ class Card_operations:
     def update_card(self, db_context: Connection, updated_card: Card) -> bool:
         """Update an existing card in the database."""
         logger = logging.getLogger(__name__)
-        logger.info(f"Updating {self.update_card} in the database.")
+        logger.info(f"Updating {updated_card} in the database.")
         cursor = db_context.cursor()
 
         try:
@@ -275,10 +275,10 @@ class Card_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to update card in the database: {error}.")
+            logger.warning(f"Failed to update card '{updated_card}' in the database: {error}.")
             return False
 
-        logger.info("Succesfully update card in the database!")
+        logger.info(f"Succesfully update card '{updated_card}' in the database!")
         return True
 
     def delete_card(self, db_context: Connection, card_id: int) -> bool:
@@ -292,10 +292,10 @@ class Card_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to delete card from the database: {error}.")
+            logger.warning(f"Failed to delete card '{card_id}' from the database: {error}.")
             return False
 
-        logger.info("Succesfully deleted card from the database!")
+        logger.info(f"Succesfully deleted card '{card_id}' from the database!")
         return True
 
     # Card variant operations starts here
@@ -317,7 +317,7 @@ class Card_operations:
     def add_variant(self, db_context: Connection, card_id: int, variant: str) -> bool:
         """Add a variant to a card in the database."""
         logger = logging.getLogger(__name__)
-        logger.info(f"Adding card variant of card '{card_id}' to the database.")
+        logger.info(f"Adding card variant '{variant}' of card '{card_id}' to the database.")
         cursor = db_context.cursor()
 
         try:
@@ -328,10 +328,10 @@ class Card_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to add variant to the database: {error}.")
+            logger.warning(f"Failed to add card variant '{variant}' of card '{card_id}' to the database: {error}.")
             return False
 
-        logger.info("Succesfully added variant to the database.")
+        logger.info(f"Succesfully added card variant '{variant}' of card '{card_id}' to the database.")
         return True
 
     def get_variants(self, db_context: Connection, card_id: int) -> list[str]:
@@ -370,10 +370,10 @@ class Card_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to delete variant from database: {error}.")
+            logger.warning("Failed to delete variant '%s' of card '%s' from the database: '%s'.", variant, card_id, error)
             return False
 
-        logger.info("Succesfully deleted variant from the database.")
+        logger.info("Succesfully deleted variant '%s' of card '%s' from the database.", variant, card_id)
         return True
 
     def delete_variants(self, db_context: Connection, card_id: int) -> bool:
@@ -409,10 +409,10 @@ class Card_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to add image to the database: {error}.")
+            logger.warning(f"Failed to add image of card '{card_id}' to the database: {error}.")
             return False
 
-        logger.info("Succesfully added image to the database.")
+        logger.info(f"Succesfully added image of card {card_id} to the database.")
         return True
 
     def get_image(
@@ -445,10 +445,10 @@ class Card_operations:
             db_context.commit()
 
         except db_error as error:
-            logger.warning(f"Failed to delete image from the database: {error}.")
+            logger.warning(f"Failed to delete image of card '{card_id}' from the database: {error}.")
             return False
 
-        logger.info("Succesfully deleted image from the database")
+        logger.info(f"Succesfully deleted image of card '{card_id}' from the database")
         return True
 
     def delete_card_and_properties(self, db_context: Connection, card_id: int) -> bool:
@@ -469,11 +469,12 @@ class Card_operations:
 
     def reset_set_cards(self, db_context: Connection, set_id: int) -> bool:
         """Delete all cards from a set and reset its sync status."""
+        logger = logging.getLogger(__name__)
         set_cards = self.get_cards_by_set(db_context, set_id)
 
         for card in set_cards:
             if not self.delete_card(db_context, card.id):
-                print("Failed to remove card.")
+                logger.warning(f"Failed to remove card '{card.id}' from the database.")
                 return False
 
         current_set = Set_operations().get_set_by_id(db_context, set_id)
