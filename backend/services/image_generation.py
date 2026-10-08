@@ -1,6 +1,8 @@
 from PIL import Image, ImageEnhance
 from io import BytesIO
 from pathlib import Path
+from os.path import isfile
+from os import listdir
 
 def retreive_extension(image_tuple: tuple[bytes, str]) -> str:
     match image_tuple[1].lower():
@@ -24,11 +26,17 @@ def image_processor(current_image: tuple[bytes, str], card_number: str, set_name
 
     SET_DIR: Path = Path(__file__).resolve().parent.parent / "data" / "generated" / set_name
     SET_DIR.mkdir(parents=True, exist_ok=True)
+    
+    image_directory = SET_DIR / f"{file_name}{extension}"
+    if isfile(image_directory):
+        return
+
+    template_path = Path(__file__).resolve().parent.parent / "data" / "templates"
 
     with Image.open(BytesIO(current_image[0])) as im:
-        image_directory = SET_DIR / f"{file_name}{extension}"
-
-        if variant in ["Holofoil", "Reverse Holofoil"]:
+        # Apparently i do save rarities, so I should check whether something is a full art,
+        # double rar, IR of SIR om er voor te zorgen dat de holofoil template niet wordt toegepast daar op.
+        if f"{variant}.png" in listdir(template_path):
             template = get_template(variant).convert("RGBA")
             im = Image.alpha_composite(im.convert("RGBA"), template)
 
@@ -40,7 +48,7 @@ def get_template(variant:str):
     template = Image.open(template_path).convert("RGBA")
 
     alpha_channel = template.getchannel("A")
-    opacity = 64 / 255
+    opacity = 100 / 255
     alpha_channel = ImageEnhance.Brightness(alpha_channel).enhance(opacity)
 
     template.putalpha(alpha_channel)
