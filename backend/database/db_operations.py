@@ -14,7 +14,7 @@ class Set_operations:
         """Retrieve a single set using a custom SQL query."""
         cursor = db_context.cursor()
 
-        cursor.execute(f"""SELECT * FROM sets WHERE {query}""", values)
+        cursor.execute("""SELECT * FROM sets WHERE """ + query, values)
         set_row = cursor.fetchone()
         if set_row is None:
             return None
@@ -35,7 +35,9 @@ class Set_operations:
         """Retrieve multiple sets using a custom SQL query."""
         cursor = db_context.cursor()
 
-        cursor.execute(f"SELECT * FROM sets {query} ORDER BY release_date DESC", values)
+        cursor.execute(
+            "SELECT * FROM sets " + query + " ORDER BY release_date DESC", values
+        )
         tuple_list = cursor.fetchall()
         set_list: list[Set] = []
 
@@ -76,7 +78,7 @@ class Set_operations:
             )
             return False
 
-        logger.info(f"Succesfully added set '{new_set}' to the database!")
+        logger.info(f"Successfully added set '{new_set}' to the database!")
         return True
 
     def get_sets_by_year(self, db_context: Connection, year: int) -> list[Set]:
@@ -142,7 +144,7 @@ class Set_operations:
             )
             return False
 
-        logger.info(f"Succesfully updated set '{updated_set}' in the database.")
+        logger.info(f"Successfully updated set '{updated_set}' in the database.")
         return True
 
     def delete_set(self, db_context: Connection, set_id: int) -> bool:
@@ -160,7 +162,7 @@ class Set_operations:
             )
             return False
 
-        logger.info(f"Succesfully deleted the set '{set_id}' from the database!")
+        logger.info(f"Successfully deleted the set '{set_id}' from the database!")
         return True
 
     def is_set_complete(self, db_context: Connection, current_set: Set) -> bool:
@@ -199,7 +201,7 @@ class Card_operations:
         """Retrieve multiple cards using a custom SQL query."""
         cursor = db_context.cursor()
 
-        cursor.execute(f"""SELECT * FROM cards {query}""", values)
+        cursor.execute("""SELECT * FROM cards """ + query, values)
         tuple_list = cursor.fetchall()
         card_list: list[Card] = []
 
@@ -234,7 +236,7 @@ class Card_operations:
             )
             return False
 
-        logger.info(f"Succesfully added card '{new_card}' to the database!")
+        logger.info(f"Successfully added card '{new_card}' to the database!")
         return True
 
     def get_all_cards(self, db_context: Connection) -> list[Card]:
@@ -288,7 +290,7 @@ class Card_operations:
             )
             return False
 
-        logger.info(f"Succesfully update card '{updated_card}' in the database!")
+        logger.info(f"Successfully update card '{updated_card}' in the database!")
         return True
 
     def delete_card(self, db_context: Connection, card_id: int) -> bool:
@@ -307,7 +309,7 @@ class Card_operations:
             )
             return False
 
-        logger.info(f"Succesfully deleted card '{card_id}' from the database!")
+        logger.info(f"Successfully deleted card '{card_id}' from the database!")
         return True
 
     # Card variant operations starts here
@@ -348,7 +350,7 @@ class Card_operations:
             return False
 
         logger.info(
-            f"Succesfully added card variant '{variant}' of card '{card_id}' to the database."
+            f"Successfully added card variant '{variant}' of card '{card_id}' to the database."
         )
         return True
 
@@ -397,7 +399,7 @@ class Card_operations:
             return False
 
         logger.info(
-            "Succesfully deleted variant '%s' of card '%s' from the database.",
+            "Successfully deleted variant '%s' of card '%s' from the database.",
             variant,
             card_id,
         )
@@ -441,7 +443,7 @@ class Card_operations:
             )
             return False
 
-        logger.info(f"Succesfully added image of card {card_id} to the database.")
+        logger.info(f"Successfully added image of card {card_id} to the database.")
         return True
 
     def get_image(
@@ -479,7 +481,7 @@ class Card_operations:
             )
             return False
 
-        logger.info(f"Succesfully deleted image of card '{card_id}' from the database")
+        logger.info(f"Successfully deleted image of card '{card_id}' from the database")
         return True
 
     def delete_card_and_properties(self, db_context: Connection, card_id: int) -> bool:
@@ -509,7 +511,7 @@ class Card_operations:
                 return False
 
         current_set = Set_operations().get_set_by_id(db_context, set_id)
-        
+
         if current_set is not None:
             current_set.sync_complete = 0
             Set_operations().update_set(db_context, current_set)

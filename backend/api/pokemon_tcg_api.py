@@ -53,7 +53,7 @@ class PokemonTCGAPI:
                 findall(r"\b5\d{2}\b", str(response.status_code))
                 and not self.retried_request
             ):
-                logger.warning("There has been a server error. Trying ahain")
+                logger.warning("There has been a server error. Trying again")
                 self.retried_request = True
 
                 await asyncio.sleep(2.5)
@@ -63,7 +63,7 @@ class PokemonTCGAPI:
 
             if response.status_code == 401:
                 logger.warning(
-                    "401: The request got denied due to a failty API key."
+                    "401: The request got denied due to a faulty API key."
                     "Trying again with a different key if there is another."
                 )
 
@@ -176,7 +176,7 @@ class PokemonTCGAPI:
                 logger.warning("Image response did not contain a Content-Type header.")
                 return {"success": False}
 
-            logger.info("Succesfully obtained the image!")
+            logger.info("Successfully obtained the image!")
             return {
                 "success": True,
                 "data": {"image_data": response.content, "content_type": content_type},

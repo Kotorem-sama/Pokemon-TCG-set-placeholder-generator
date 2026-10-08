@@ -77,7 +77,7 @@ class SyncService:
         if not response["success"]:
             return False
 
-        if response["data"] == None:
+        if response["data"] is None:
             return False
 
         return self.card_operations.save_image(
@@ -105,7 +105,7 @@ class SyncService:
                 self.card_operations.delete_variants(db_context, card_id)
                 return False
 
-        logger.info(f"Succesfully synchronised all card variants of card '{card_id}'.")
+        logger.info(f"Successfully synchronised all card variants of card '{card_id}'.")
         return True
 
     def is_card(self, card: dict[str, Any]) -> bool:
@@ -224,5 +224,5 @@ class SyncService:
         if not self.set_operations.update_set(db_context, db_set):
             return None
 
-        logger.info(f"Succesfully added set '{set_id}'!")
+        logger.info(f"Successfully added set '{set_id}'!")
         return db_set
