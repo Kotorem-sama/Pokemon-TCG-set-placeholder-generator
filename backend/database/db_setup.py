@@ -27,12 +27,12 @@ class DatabaseSetup:
         check = cursor.execute("PRAGMA integrity_check").fetchone()
         db_context.close()
 
-        if check[0] != "Ok":
+        if str(check[0]).lower() != "ok":
             logger.error(f"The integrity check came back negative: {check[0]}")
         else:
             logger.info("The integrity check has succeeded.")
 
-        return check[0] == "ok"
+        return str(check[0]).lower() == "ok"
 
     def initialise_db(self, db_context: Connection) -> Connection:
         """Create the database tables if they do not already exist."""
