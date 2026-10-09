@@ -2,19 +2,22 @@ from io import BytesIO
 from logging import getLogger
 from os.path import isfile
 from pathlib import Path
-from sqlite3 import Connection
 
 from database.db_operations import Card, Card_operations, Set_operations
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
+from services.name_service import sanitize_filename
+
 
 class ImageGeneration:
-    def __init__(self) -> None:
+    def __init__(
+        self, card_operations: Card_operations, set_operations: Set_operations
+    ) -> None:
         self.logger = getLogger(__name__)
-        self.card_operations = Card_operations()
-        self.set_operations = Set_operations()
+        self.card_operations = card_operations
+        self.set_operations = set_operations
 
-    def retreive_extension(self, image_tuple: tuple[bytes, str]) -> str:
+    def retrieve_extension(self, image_tuple: tuple[bytes, str]) -> str:
         """
         Determine file extension based on MIME type.
 
@@ -51,27 +54,6 @@ class ImageGeneration:
             self.logger.error(f"Error retrieving extension from image tuple: {e}")
             return ".fail"
 
-    def sanitize_filename(self, filename: str) -> str:
-        """
-        Remove invalid characters from filename to ensure filesystem compatibility.
-
-        Args:
-            filename: The filename to sanitize
-
-        Returns:
-            str: Sanitized filename with invalid characters removed or replaced
-        """
-        try:
-            invalid_characters = ["<", ">", ":", '"', "\\", "|", "?", "*"]
-
-            for character in invalid_characters:
-                filename = filename.replace(character, "")
-
-            return filename.replace("/", "-")
-        except Exception as e:
-            self.logger.error(f"Error sanitizing filename '{filename}': {e}")
-            return "unnamed"
-
     def save_image(
         self, extension: str, file_name: str, set_name: str, image: Image.Image
     ):
@@ -90,8 +72,8 @@ class ImageGeneration:
             OSError: If directory creation or image saving fails
         """
         try:
-            set_name = self.sanitize_filename(set_name)
-            file_name = self.sanitize_filename(file_name)
+            set_name = sanitize_filename(set_name)
+            file_name = sanitize_filename(file_name)
             SET_DIR: Path = (
                 Path(__file__).resolve().parent.parent / "data" / "generated" / set_name
             )
@@ -129,7 +111,7 @@ class ImageGeneration:
             variant: Card variant (e.g., "Holo", "Reverse Holo")
         """
         try:
-            extension = self.retreive_extension(current_image)
+            extension = self.retrieve_extension(current_image)
             self.logger.info(
                 f"Processing image for card: {current_card.name} ({variant})"
             )
@@ -240,10 +222,10 @@ class ImageGeneration:
             target_size: tuple[int, int] = (base_image.width, base_image.height)
 
             if template.size != target_size:
-                template = ImageOps.fit(template, base_image.size)
                 self.logger.info(
                     f"Template resized from {template.size} to {target_size}"
                 )
+                template = ImageOps.fit(template, base_image.size)
 
             result = Image.alpha_composite(base_image, template)
             self.logger.info(f"Template combined successfully for variant: {variant}")
@@ -298,10 +280,23 @@ class ImageGeneration:
             )
 
             # Centered placeholder text
-            try:
-                font = ImageFont.truetype("arial.ttf", max(16, width // 16))
-            except OSError:
-                self.logger.warning("Arial font not found, using default font")
+            font_options = [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
+                "C:\\Windows\\Fonts\\arial.ttf",  # Windows
+                "/Library/Fonts/Arial.ttf",  # macOS
+            ]
+
+            font = None
+            for font_path in font_options:
+                if Path(font_path).is_file():
+                    try:
+                        font = ImageFont.truetype(font_path, max(16, width // 16))
+                        break
+                    except Exception:
+                        continue
+
+            if font is None:
+                self.logger.warning("No TrueType font found, using default font")
                 font = ImageFont.load_default()
 
             text = f"{current_card.name} ({variant})"
@@ -314,13 +309,20 @@ class ImageGeneration:
 
             for word in words:
                 candidate = f"{current_line} {word}".strip()
-
                 if draw.textbbox((0, 0), candidate, font=font)[2] <= max_text_width:
                     current_line = candidate
                 else:
                     if current_line:
                         lines.append(current_line)
                     current_line = word
+
+                    # If even a single word is too long, force it onto a new line anyway
+                    if (
+                        draw.textbbox((0, 0), current_line, font=font)[2]
+                        > max_text_width
+                    ):
+                        lines.append(current_line)
+                        current_line = ""
 
             if current_line:
                 lines.append(current_line)
@@ -355,9 +357,7 @@ class ImageGeneration:
                 f"Error generating placeholder for card '{current_card.name}': {e}"
             )
 
-    def generate_images_for_card(
-        self, db_context: Connection, current_card: Card, set_name: str
-    ):
+    def generate_images_for_card(self, current_card: Card, set_name: str):
         """
         Generate images for all variants of a card.
 
@@ -365,17 +365,14 @@ class ImageGeneration:
         generates placeholder images for each variant. Otherwise, processes the actual image.
 
         Args:
-            db_context: Database connection context
             current_card: Card object to generate images for
             set_name: Name of the Pokémon set
         """
         try:
             self.logger.info(f"Generating images for card: {current_card.name}")
 
-            card_variants = self.card_operations.get_variants(
-                db_context, current_card.id
-            )
-            card_image = self.card_operations.get_image(db_context, current_card.id)
+            card_variants = self.card_operations.get_variants(current_card.id)
+            card_image = self.card_operations.get_image(current_card.id)
 
             if card_image is None:
                 self.logger.info(
@@ -392,32 +389,31 @@ class ImageGeneration:
                 f"Error generating images for card '{current_card.name}': {e}"
             )
 
-    def generate_images_for_set(self, db_context: Connection, set_id: int):
+    def generate_images_for_set(self, set_id: int):
         """
         Generate images for all cards in a Pokémon set.
 
         Retrieves all cards for the set and generates images for each card across all variants.
 
         Args:
-            db_context: Database connection context
             set_id: ID of the Pokémon set
         """
         try:
             self.logger.info(f"Starting image generation for set ID: {set_id}")
 
-            current_set = self.set_operations.get_set_by_id(db_context, set_id)
+            current_set = self.set_operations.get_set_by_id(set_id)
 
             if current_set is None:
                 self.logger.error(f"Set with ID {set_id} not found.")
                 return
 
-            cards_in_set = self.card_operations.get_cards_by_set(db_context, set_id)
+            cards_in_set = self.card_operations.get_cards_by_set(set_id)
             self.logger.info(
                 f"Found {len(cards_in_set)} cards in set '{current_set.name}'"
             )
 
             for card in cards_in_set:
-                self.generate_images_for_card(db_context, card, current_set.name)
+                self.generate_images_for_card(card, current_set.name)
 
             self.logger.info(f"Completed image generation for set: {current_set.name}")
         except Exception as e:

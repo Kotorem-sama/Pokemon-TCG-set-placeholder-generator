@@ -8,17 +8,20 @@ from classes import Card, Set
 class Set_operations:
     """Provides database operations for Pokémon TCG sets."""
 
-    def __init__(self) -> None:
+    def __init__(self, db_context: Connection) -> None:
         self.logger = getLogger(__name__)
+        self.db_context = db_context
 
     def __get_set_from_query(
-        self, db_context: Connection, query: str, values: dict[str, str | int | None]
+        self, query: str, values: dict[str, str | int | None]
     ) -> Set | None:
         """Retrieve a single set using a custom SQL query."""
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         cursor.execute("""SELECT * FROM sets WHERE """ + query, values)
         set_row = cursor.fetchone()
+        cursor.close()
+
         if set_row is None:
             return None
 
@@ -33,15 +36,16 @@ class Set_operations:
         )
 
     def __get_sets_from_query(
-        self, db_context: Connection, query: str, values: dict[str, str | int | None]
+        self, query: str, values: dict[str, str | int | None]
     ) -> list[Set]:
         """Retrieve multiple sets using a custom SQL query."""
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         cursor.execute(
             "SELECT * FROM sets " + query + " ORDER BY release_date DESC", values
         )
         tuple_list = cursor.fetchall()
+        cursor.close()
         set_list: list[Set] = []
 
         for tpl in tuple_list:
@@ -59,12 +63,12 @@ class Set_operations:
 
         return set_list
 
-    def add_set(self, db_context: Connection, new_set: Set) -> bool:
+    def add_set(self, new_set: Set) -> bool:
         """Add a new set to the database."""
 
         self.logger.info(f"Adding set {new_set} to the database.")
 
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
@@ -73,7 +77,8 @@ class Set_operations:
             VALUES(:id, :name, :slug, :abbreviation, :release_date, :card_count, :sync_complete)""",
                 new_set.get_dict(),
             )
-            db_context.commit()
+
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -81,41 +86,41 @@ class Set_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(f"Successfully added set '{new_set}' to the database!")
         return True
 
-    def get_sets_by_year(self, db_context: Connection, year: int) -> list[Set]:
+    def get_sets_by_year(self, year: int) -> list[Set]:
         """Retrieve all sets released in a specific year."""
         return self.__get_sets_from_query(
-            db_context,
             """WHERE 
             strftime('%Y', release_date) = :year""",
             {"year": str(year)},
         )
 
-    def get_all_sets(self, db_context: Connection) -> list[Set]:
+    def get_all_sets(self) -> list[Set]:
         """Retrieve all sets from the database."""
-        return self.__get_sets_from_query(db_context, "", {})
+        return self.__get_sets_from_query("", {})
 
-    def get_set_by_id(self, db_context: Connection, id: int) -> Set | None:
+    def get_set_by_id(self, id: int) -> Set | None:
         """Retrieve a set using its ID."""
-        return self.__get_set_from_query(db_context, "id = :id", {"id": id})
+        return self.__get_set_from_query("id = :id", {"id": id})
 
-    def get_set_by_slug(self, db_context: Connection, slug: str) -> Set | None:
+    def get_set_by_slug(self, slug: str) -> Set | None:
         """Retrieve a set using its slug."""
-        return self.__get_set_from_query(db_context, "slug = :slug", {"slug": slug})
+        return self.__get_set_from_query("slug = :slug", {"slug": slug})
 
-    def get_set_by_name(self, db_context: Connection, name: str) -> Set | None:
+    def get_set_by_name(self, name: str) -> Set | None:
         """Retrieve sets matching a name."""
-        return self.__get_set_from_query(
-            db_context, "name LIKE :name", {"name": f"%{name}%"}
-        )
+        return self.__get_set_from_query("name LIKE :name", {"name": f"%{name}%"})
 
-    def update_set(self, db_context: Connection, updated_set: Set) -> bool:
+    def update_set(self, updated_set: Set) -> bool:
         """Update an existing set in the database."""
 
         self.logger.info(f"Updating set {updated_set} to the database.")
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
@@ -139,7 +144,7 @@ class Set_operations:
                 },
             )
 
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -147,48 +152,49 @@ class Set_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(f"Successfully updated set '{updated_set}' in the database.")
         return True
 
-    def delete_set(self, db_context: Connection, set_id: int) -> bool:
+    def delete_set(self, set_id: int) -> bool:
         """Delete a set from the database."""
 
         self.logger.info(f"Attempting to delete set '{set_id}' from the database.")
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute("""DELETE FROM sets WHERE id=(:id)""", {"id": set_id})
-            db_context.commit()
+            self.db_context.commit()
         except db_error as error:
             self.logger.warning(
                 f"Failed to delete set '{set_id}' from the database: {error}."
             )
             return False
+        finally:
+            cursor.close()
 
         self.logger.info(f"Successfully deleted the set '{set_id}' from the database!")
         return True
-
-    def is_set_complete(self, db_context: Connection, current_set: Set) -> bool:
-        """Check whether all cards belonging to a set have been stored."""
-        cards_in_set = Card_operations().get_cards_by_set(db_context, current_set.id)
-
-        return len(cards_in_set) == current_set.card_count
 
 
 class Card_operations:
     """Provides database operations for Pokémon TCG cards and their properties."""
 
-    def __init__(self) -> None:
+    def __init__(self, db_context: Connection) -> None:
         self.logger = getLogger(__name__)
+        self.db_context = db_context
 
     def __get_card_by_query(
-        self, db_context: Connection, query: str, values: dict[str, str | int | None]
+        self, query: str, values: dict[str, str | int | None]
     ) -> Card | None:
         """Retrieve a single card using a custom SQL query."""
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         cursor.execute(f"""SELECT * FROM cards WHERE {query}""", values)
         card_row = cursor.fetchone()
+        cursor.close()
 
         if card_row is None:
             return None
@@ -202,13 +208,14 @@ class Card_operations:
         )
 
     def __get_cards_by_query(
-        self, db_context: Connection, query: str, values: dict[str, str | int | None]
+        self, query: str, values: dict[str, str | int | None]
     ) -> list[Card]:
         """Retrieve multiple cards using a custom SQL query."""
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         cursor.execute("""SELECT * FROM cards """ + query, values)
         tuple_list = cursor.fetchall()
+        cursor.close()
         card_list: list[Card] = []
 
         for tpl in tuple_list:
@@ -220,11 +227,11 @@ class Card_operations:
 
         return card_list
 
-    def add_card(self, db_context: Connection, new_card: Card) -> bool:
+    def add_card(self, new_card: Card) -> bool:
         """Add a new card to the database."""
 
         self.logger.info(f"Adding card '{new_card}' to the database.")
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
@@ -234,7 +241,7 @@ class Card_operations:
             """,
                 new_card.get_dict(),
             )
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -242,34 +249,33 @@ class Card_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(f"Successfully added card '{new_card}' to the database!")
         return True
 
-    def get_all_cards(self, db_context: Connection) -> list[Card]:
+    def get_all_cards(self) -> list[Card]:
         """Retrieve all cards from the database."""
-        return self.__get_cards_by_query(db_context, "", {})
+        return self.__get_cards_by_query("", {})
 
-    def get_cards_by_set(self, db_context: Connection, set_id: int) -> list[Card]:
+    def get_cards_by_set(self, set_id: int) -> list[Card]:
         """Retrieve all cards belonging to a specific set."""
-        return self.__get_cards_by_query(
-            db_context, "WHERE set_id = :set_id", {"set_id": set_id}
-        )
+        return self.__get_cards_by_query("WHERE set_id = :set_id", {"set_id": set_id})
 
-    def get_cards_by_rarity(self, db_context: Connection, rarity: str) -> list[Card]:
+    def get_cards_by_rarity(self, rarity: str) -> list[Card]:
         """Retrieve all cards with a specific rarity."""
-        return self.__get_cards_by_query(
-            db_context, "WHERE rarity = :rarity", {"rarity": rarity}
-        )
+        return self.__get_cards_by_query("WHERE rarity = :rarity", {"rarity": rarity})
 
-    def get_card_by_id(self, db_context: Connection, id: int) -> Card | None:
+    def get_card_by_id(self, id: int) -> Card | None:
         """Retrieve a card using its ID."""
-        return self.__get_card_by_query(db_context, "id = :id", {"id": id})
+        return self.__get_card_by_query("id = :id", {"id": id})
 
-    def update_card(self, db_context: Connection, updated_card: Card) -> bool:
+    def update_card(self, updated_card: Card) -> bool:
         """Update an existing card in the database."""
 
         self.logger.info(f"Updating {updated_card} in the database.")
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
@@ -288,7 +294,7 @@ class Card_operations:
                     "rarity": updated_card.rarity,
                 },
             )
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -296,18 +302,21 @@ class Card_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(f"Successfully update card '{updated_card}' in the database!")
         return True
 
-    def delete_card(self, db_context: Connection, card_id: int) -> bool:
+    def delete_card(self, card_id: int) -> bool:
         """Delete a card from the database."""
 
         self.logger.info(f"Deleting card '{card_id}' from the database.")
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute("""DELETE FROM cards WHERE id=(:id)""", {"id": card_id})
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -315,18 +324,22 @@ class Card_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(f"Successfully deleted card '{card_id}' from the database!")
         return True
 
     # Card variant operations starts here
     def __get_variants_by_query(
-        self, db_context: Connection, query: str, values: dict[str, str | int | None]
+        self, query: str, values: dict[str, str | int | None]
     ) -> list[str]:
         """Retrieve card variants using a custom SQL query."""
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         cursor.execute(query, values)
         tuple_list = cursor.fetchall()
+        cursor.close()
         variants_list: list[str] = []
 
         for tpl in tuple_list:
@@ -334,20 +347,20 @@ class Card_operations:
 
         return variants_list
 
-    def add_variant(self, db_context: Connection, card_id: int, variant: str) -> bool:
+    def add_variant(self, card_id: int, variant: str) -> bool:
         """Add a variant to a card in the database."""
 
         self.logger.info(
             f"Adding card variant '{variant}' of card '{card_id}' to the database."
         )
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
                 """INSERT INTO card_variants (card_id, variant) VALUES (:card_id, :variant)""",
                 {"card_id": card_id, "variant": variant},
             )
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -355,45 +368,42 @@ class Card_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(
             f"Successfully added card variant '{variant}' of card '{card_id}' to the database."
         )
         return True
 
-    def get_variants(self, db_context: Connection, card_id: int) -> list[str]:
+    def get_variants(self, card_id: int) -> list[str]:
         """Retrieve all variants belonging to a card."""
         return self.__get_variants_by_query(
-            db_context,
             "SELECT variant FROM card_variants WHERE card_id = :card_id",
             {"card_id": card_id},
         )
 
-    def get_variant_types_in_set(
-        self, db_context: Connection, set_id: int
-    ) -> list[str]:
+    def get_variant_types_in_set(self, set_id: int) -> list[str]:
         """Retrieve all unique variant types used within a set."""
         return self.__get_variants_by_query(
-            db_context,
             """SELECT DISTINCT variant FROM card_variants
                                             JOIN cards ON card_variants.card_id = cards.id
                                             WHERE cards.set_id = :set_id""",
             {"set_id": set_id},
         )
 
-    def delete_variant(
-        self, db_context: Connection, card_id: int, variant: str
-    ) -> bool:
+    def delete_variant(self, card_id: int, variant: str) -> bool:
         """Delete a specific variant from a card."""
 
         self.logger.info("Deleting variant '%s' from card '%s'", variant, card_id)
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
                 """DELETE FROM card_variants WHERE (card_id, variant)=(:card_id, :variant)""",
                 {"card_id": card_id, "variant": variant},
             )
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -404,6 +414,9 @@ class Card_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(
             "Successfully deleted variant '%s' of card '%s' from the database.",
             variant,
@@ -411,26 +424,24 @@ class Card_operations:
         )
         return True
 
-    def delete_variants(self, db_context: Connection, card_id: int) -> bool:
+    def delete_variants(self, card_id: int) -> bool:
         """Delete all variants belonging to a card."""
-        variants = self.get_variants(db_context, card_id)
+        variants = self.get_variants(card_id)
         if not variants:
             return True
 
         for variant in variants:
-            if not self.delete_variant(db_context, card_id, variant):
+            if not self.delete_variant(card_id, variant):
                 return False
 
         return True
 
     # Card image operations
-    def save_image(
-        self, db_context: Connection, card_id: int, image_data: bytes, content_type: str
-    ) -> bool:
+    def save_image(self, card_id: int, image_data: bytes, content_type: str) -> bool:
         """Save a card image to the database."""
 
         self.logger.info(f"Adding card image of card '{card_id}' to the database.")
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
@@ -441,7 +452,7 @@ class Card_operations:
                     "content_type": content_type,
                 },
             )
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -449,20 +460,23 @@ class Card_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(f"Successfully added image of card {card_id} to the database.")
         return True
 
-    def get_image(
-        self, db_context: Connection, card_id: int
-    ) -> tuple[bytes, str] | None:
+    def get_image(self, card_id: int) -> tuple[bytes, str] | None:
         """Retrieve a card image and its content type."""
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         cursor.execute(
             """SELECT * FROM card_images WHERE card_id = :card_id""",
             {"card_id": card_id},
         )
         image = cursor.fetchone()
+        cursor.close()
+
         if image is None:
             return None
 
@@ -471,18 +485,18 @@ class Card_operations:
 
         return image["image_data"], image["content_type"]
 
-    def delete_image(self, db_context: Connection, card_id: int) -> bool:
+    def delete_image(self, card_id: int) -> bool:
         """Delete a card image from the database."""
 
         self.logger.info(f"Deleting image of card '{card_id}' from the database.")
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         try:
             cursor.execute(
                 """DELETE FROM card_images WHERE card_id=:card_id""",
                 {"card_id": card_id},
             )
-            db_context.commit()
+            self.db_context.commit()
 
         except db_error as error:
             self.logger.warning(
@@ -490,43 +504,26 @@ class Card_operations:
             )
             return False
 
+        finally:
+            cursor.close()
+
         self.logger.info(
             f"Successfully deleted image of card '{card_id}' from the database"
         )
         return True
 
-    def delete_card_and_properties(self, db_context: Connection, card_id: int) -> bool:
+    def delete_card_and_properties(self, card_id: int) -> bool:
         """Delete a card and all associated images and variants."""
-        if self.get_image(db_context, card_id) is not None:
-            if not self.delete_image(db_context, card_id):
+        if self.get_image(card_id) is not None:
+            if not self.delete_image(card_id):
                 return False
 
-        if self.get_variants(db_context, card_id):
-            if not self.delete_variants(db_context, card_id):
+        if self.get_variants(card_id):
+            if not self.delete_variants(card_id):
                 return False
 
-        if self.get_card_by_id(db_context, card_id) is not None:
-            if not self.delete_card(db_context, card_id):
+        if self.get_card_by_id(card_id) is not None:
+            if not self.delete_card(card_id):
                 return False
-
-        return True
-
-    def reset_set_cards(self, db_context: Connection, set_id: int) -> bool:
-        """Delete all cards from a set and reset its sync status."""
-
-        set_cards = self.get_cards_by_set(db_context, set_id)
-
-        for card in set_cards:
-            if not self.delete_card(db_context, card.id):
-                self.logger.warning(
-                    f"Failed to remove card '{card.id}' from the database."
-                )
-                return False
-
-        current_set = Set_operations().get_set_by_id(db_context, set_id)
-
-        if current_set is not None:
-            current_set.sync_complete = 0
-            Set_operations().update_set(db_context, current_set)
 
         return True

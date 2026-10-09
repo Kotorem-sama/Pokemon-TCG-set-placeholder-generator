@@ -1,21 +1,19 @@
-import logging
+from logging import getLogger
 from pathlib import Path
 
-from database.db_operations import Card_operations, Set_operations
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen.canvas import Canvas
 
 
 class DocumentGeneration:
     """
     Generates PDF documents containing card placeholder images in a grid layout.
-    
+
     This class handles the layout calculations and PDF generation for Pokémon card
     placeholders, arranging them in a configurable grid (default 3x3) with proper
     spacing and margins.
     """
-    logger = logging.getLogger(__name__)
 
     COLUMNS = 3
     ROWS = 3
@@ -34,25 +32,19 @@ class DocumentGeneration:
 
     def __init__(self) -> None:
         """Initialize DocumentGeneration with database operations."""
-        try:
-            self.card_operations = Card_operations()
-            self.set_operations = Set_operations()
-            self.logger.info("DocumentGeneration initialized successfully")
-        except Exception as e:
-            self.logger.error(f"Error initializing DocumentGeneration: {e}")
-            raise
+        self.logger = getLogger(__name__)
 
     def generate_pdf(self, image_paths: list[str]) -> None:
         """
         Generate a PDF document containing card images arranged in a grid layout.
-        
+
         Creates a multi-page PDF with images arranged in rows and columns. Each page
         contains a 3x3 grid of cards. Images are scaled to fit the page while maintaining
         aspect ratio, with configurable margins and gaps between cards.
-        
+
         Args:
             image_paths: List of file paths to card images to include in the PDF
-            
+
         Raises:
             ValueError: If image_paths is empty
             FileNotFoundError: If any image file cannot be found
@@ -63,23 +55,25 @@ class DocumentGeneration:
             # Validate input
             if not image_paths:
                 raise ValueError("image_paths list cannot be empty")
-            
+
             self.logger.info(f"Starting PDF generation with {len(image_paths)} images")
-            
+
             # Setup output directory
             output_path = Path(__file__).parent.parent / "data" / "generated"
             output_path.mkdir(parents=True, exist_ok=True)
             self.logger.info(f"Output directory ensured: {output_path}")
-            
+
             # Generate output file path from the first image's parent directory name
             file_path = output_path / f"{Path(image_paths[0]).parent.name}.pdf"
             self.logger.info(f"PDF output path: {file_path}")
 
-            print(str())
+            print()
 
             # Initialize PDF canvas
             pdf = Canvas(str(file_path), pagesize=(self.PAGE_WIDTH, self.PAGE_HEIGHT))
-            self.logger.info(f"PDF canvas created with page size: {self.PAGE_WIDTH}x{self.PAGE_HEIGHT}")
+            self.logger.info(
+                f"PDF canvas created with page size: {self.PAGE_WIDTH}x{self.PAGE_HEIGHT}"
+            )
 
             # Calculate card dimensions based on page size and grid layout
             # The card width is constrained by either the horizontal space or vertical space
@@ -124,10 +118,12 @@ class DocumentGeneration:
                     )
 
                     image_path = Path(path)
-                    
+
                     # Validate image file exists
                     if not image_path.is_file():
-                        self.logger.warning(f"Image file not found, skipping: {image_path}")
+                        self.logger.warning(
+                            f"Image file not found, skipping: {image_path}"
+                        )
                         continue
 
                     # Draw image on PDF
@@ -140,13 +136,19 @@ class DocumentGeneration:
                         preserveAspectRatio=True,
                         anchor="c",
                     )
-                    self.logger.info(f"Image {index + 1} placed at position ({x}, {y}): {image_path.name}")
+                    self.logger.info(
+                        f"Image {index + 1} placed at position ({x}, {y}): {image_path.name}"
+                    )
 
                 except FileNotFoundError as e:
-                    self.logger.error(f"Image file not found at index {index}: {path} - {e}")
+                    self.logger.error(
+                        f"Image file not found at index {index}: {path} - {e}"
+                    )
                     continue
                 except Exception as e:
-                    self.logger.error(f"Error processing image at index {index} ({path}): {e}")
+                    self.logger.error(
+                        f"Error processing image at index {index} ({path}): {e}"
+                    )
                     continue
 
             # Save the PDF
