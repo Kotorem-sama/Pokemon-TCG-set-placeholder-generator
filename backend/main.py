@@ -20,7 +20,7 @@ async def main():
 
     db_context = database(database_path).initialise_db()
 
-    await SetToPDF(db_context).get_document("30th")
+    await SetToPDF(db_context).get_document("ME: 30th Celebration")
 
     db_context.close()
 

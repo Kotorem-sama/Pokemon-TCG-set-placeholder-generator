@@ -10,22 +10,20 @@ from pytest import fixture
 @fixture
 def db_context() -> Generator[Connection, None, None]:
     db = DatabaseSetup(":memory:")
-    connection = db.connect_db()
-    db.initialise_db(connection)
+    connection = db.initialise_db()  # returns the connection that has the tables
 
     yield connection
 
     connection.close()
 
+@fixture
+def set_operations(db_context: Connection) -> Set_operations:
+    return Set_operations(db_context)
+
 
 @fixture
-def set_operations() -> Set_operations:
-    return Set_operations(db_context())
-
-
-@fixture
-def card_operations() -> Card_operations:
-    return Card_operations(db_context())
+def card_operations(db_context: Connection) -> Card_operations:
+    return Card_operations(db_context)
 
 
 @fixture
@@ -239,7 +237,6 @@ def test_delete_variant(
 
 
 def test_save_and_get_image(
-    db_context: Connection,
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
@@ -309,7 +306,6 @@ def test_delete_card_cascades_variants_and_image(
 
 
 def test_delete_set_cascades_cards(
-    db_context: Connection,
     set_operations: Set_operations,
     card_operations: Card_operations,
     test_set: Set,
