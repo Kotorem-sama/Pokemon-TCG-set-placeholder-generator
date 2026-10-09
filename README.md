@@ -60,19 +60,27 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 ```
 
-2. Create `backend/.env` from the example file:
+2. Install the dependencies before starting the launcher:
+
+```bash
+python -m pip install -r backend/requirements.txt
+```
+
+The launcher imports `python-dotenv` and `pytest` before its startup installer runs, so this installation step is required in a clean environment.
+
+3. Create `backend/.env` from the example file:
 
 ```bash
 cp backend/.example.env backend/.env
 ```
 
-3. Set one or more valid API keys in `backend/.env`:
+4. Set one or more valid API keys in `backend/.env`:
 
 ```env
 POKEMON_TCG_API_KEY_LIST=tcg_live_<40-hex-characters>,tcg_live_<another-40-hex-characters>
 ```
 
-The config loader accepts a comma-separated list and filters keys that do not match the `tcg_live_` plus 40 hexadecimal characters format. The application installs packages from `backend/requirements.txt` during startup.
+The config loader accepts a comma-separated list and filters keys that do not match the `tcg_live_` plus 40 hexadecimal characters format. The launcher also invokes the package installer during startup.
 
 ## Running the project
 
