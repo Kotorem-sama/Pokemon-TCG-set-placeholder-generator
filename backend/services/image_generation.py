@@ -3,9 +3,8 @@ from os.path import isfile
 from pathlib import Path
 from sqlite3 import Connection
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
-
 from database.db_operations import Card, Card_operations, Set_operations
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
 
 def retreive_extension(image_tuple: tuple[bytes, str]) -> str:

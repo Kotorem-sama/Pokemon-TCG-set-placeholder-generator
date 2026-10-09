@@ -2,7 +2,6 @@ from collections.abc import Generator
 from sqlite3 import Connection
 
 import pytest
-
 from classes import Card, Set
 from database.db_operations import Card_operations, Set_operations
 from database.db_setup import DatabaseSetup

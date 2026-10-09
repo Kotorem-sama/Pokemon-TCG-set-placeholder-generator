@@ -3,7 +3,6 @@ import logging
 import sys
 
 import pytest
-
 from database.db_operations import Card_operations
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
