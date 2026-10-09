@@ -3,11 +3,9 @@ import logging
 import sys
 
 import pytest
-from database.db_operations import Card_operations
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
-from services.image_generation import generate_images_for_set
-from services.sync_service import SyncService
+from services.image_generation import image_generation_service
 
 
 async def main():
@@ -21,13 +19,6 @@ async def main():
 
     db = database(database_path)
     db_context = db.initialise_db(db.connect_db())
-
-    Card_operations().reset_set_cards(db_context, 5500216)
-    await SyncService().sync_set(db_context, 5500216)
-
-    generate_images_for_set(db_context, 5500216)
-
-    # await SyncService().sync_sets(db_context)
 
     db_context.close()
 
