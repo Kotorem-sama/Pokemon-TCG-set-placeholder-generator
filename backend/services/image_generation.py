@@ -1,9 +1,11 @@
-from PIL import Image, ImageEnhance, ImageOps, ImageDraw, ImageFont
 from io import BytesIO
-from pathlib import Path
 from os.path import isfile
-from database.db_operations import Card, Card_operations, Set_operations
+from pathlib import Path
 from sqlite3 import Connection
+
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
+
+from database.db_operations import Card, Card_operations, Set_operations
 
 
 def retreive_extension(image_tuple: tuple[bytes, str]) -> str:
@@ -71,7 +73,7 @@ def get_template(variant: str):
 
 
 def combine_with_template(im: Image.Image, variant: str, card_rarity: str | None):
-    template_path = Path(__file__).resolve().parent.parent / "data" / "templates"  #
+    template_path = Path(__file__).resolve().parent.parent / "data" / "templates"
     rarities = [
         "Double Rare",
         "Illustration Rare",

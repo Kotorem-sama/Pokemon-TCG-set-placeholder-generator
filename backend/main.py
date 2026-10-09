@@ -4,13 +4,10 @@ import sys
 
 import pytest
 
+from database.db_operations import Card_operations
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
-
 from services.image_generation import generate_images_for_set
-
-from database.db_operations import Card_operations
-
 from services.sync_service import SyncService
 
 
