@@ -1,8 +1,8 @@
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 from io import BytesIO
 from pathlib import Path
 from os.path import isfile
-from os import listdir
+from database.db_operations import Card
 
 def retreive_extension(image_tuple: tuple[bytes, str]) -> str:
     match image_tuple[1].lower():
@@ -19,10 +19,10 @@ def sanitize_filename(filename:str) -> str:
     
     return filename.replace("/", "-")
 
-def image_processor(current_image: tuple[bytes, str], card_number: str, set_name: str, variant:str):
+def image_processor(current_image: tuple[bytes, str], current_card: Card, set_name: str, variant:str):
     set_name = sanitize_filename(set_name)
     extension = retreive_extension(current_image)
-    file_name = sanitize_filename(f"{card_number} - {variant}")
+    file_name = sanitize_filename(f"{current_card.number} - {variant}")
 
     SET_DIR: Path = Path(__file__).resolve().parent.parent / "data" / "generated" / set_name
     SET_DIR.mkdir(parents=True, exist_ok=True)
@@ -31,14 +31,8 @@ def image_processor(current_image: tuple[bytes, str], card_number: str, set_name
     if isfile(image_directory):
         return
 
-    template_path = Path(__file__).resolve().parent.parent / "data" / "templates"
-
     with Image.open(BytesIO(current_image[0])) as im:
-        # Apparently i do save rarities, so I should check whether something is a full art,
-        # double rar, IR of SIR om er voor te zorgen dat de holofoil template niet wordt toegepast daar op.
-        if f"{variant}.png" in listdir(template_path):
-            template = get_template(variant).convert("RGBA")
-            im = Image.alpha_composite(im.convert("RGBA"), template)
+        im = combine_with_template(im, variant, current_card.rarity)
 
         grayscale_image = im.convert("L")
         grayscale_image.save(image_directory)
@@ -54,3 +48,34 @@ def get_template(variant:str):
     template.putalpha(alpha_channel)
 
     return template
+
+def combine_with_template(im: Image.Image, variant:str, card_rarity:str | None):
+    template_path = Path(__file__).resolve().parent.parent / "data" / "templates"#
+    rarities = [
+        "Double Rare",
+        "Illustration Rare",
+        "Mega Attack Rare",
+        "Mega Hyper Rare",
+        "Promo",
+        "RGB Rare",
+        "Special Illustration Rare",
+        "Ultra Rare",
+    ]
+
+    template_file = template_path / f"{variant}.png"
+    base_image = im.convert("RGBA")
+
+    if not template_file.is_file() or card_rarity in rarities:
+        return base_image
+
+    template = get_template(variant).convert("RGBA")
+
+    target_size: tuple[int, int] = (
+        base_image.width,
+        base_image.height
+    )
+
+    if template.size != target_size:
+        template = ImageOps.fit(template, base_image.size)
+
+    return Image.alpha_composite(base_image, template)

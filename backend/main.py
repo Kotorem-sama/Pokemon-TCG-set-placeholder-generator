@@ -25,13 +25,13 @@ async def main():
     db_context = db.initialise_db(db.connect_db())
 
     current_set = Set_operations().get_set_by_name(db_context, "Ascended Heroes")
-    current_card = Card_operations().get_card_by_id(db_context, 7103)
-    card_variants = Card_operations().get_variants(db_context, 7103)
-    image = Card_operations().get_image(db_context, 7103)
+    current_card = Card_operations().get_card_by_id(db_context, 6827)
+    card_variants = Card_operations().get_variants(db_context, 6827)
+    image = Card_operations().get_image(db_context, 6827)
 
     for variant in card_variants:
         if image is not None and current_set is not None and current_card is not None and current_card.number is not None:
-            image_processor(image, current_card.number, current_set.name, variant)
+            image_processor(image, current_card, current_set.name, variant)
 
     # await SyncService().sync_sets(db_context)
 
