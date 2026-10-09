@@ -1,5 +1,5 @@
 import asyncio
-import logging
+from logging import getLogger
 from re import findall
 from typing import Any
 
@@ -16,6 +16,7 @@ class PokemonTCGAPI:
         self.timeouts = TIMEOUTS
         self.key_number = 0
         self.retried_request = False
+        self.logger = getLogger(__name__)
 
     async def _request(
         self,
@@ -25,13 +26,12 @@ class PokemonTCGAPI:
         timeout_type: str = "default",
     ) -> Any:
         """Send an API request, handling retries, API keys and response errors."""
-        logger = logging.getLogger(__name__)
 
         if not self.api_keys:
             return {"success": False}
 
         if self.key_number > len(self.api_keys) - 1:
-            logger.error(
+            self.logger.error(
                 "All API keys have run out of tokens."
                 "Please wait until tomorrow to try again, or add a new key in the .env file."
             )
@@ -41,7 +41,7 @@ class PokemonTCGAPI:
         headers["X-API-Key"] = self.api_keys[self.key_number]
 
         url = f"{self.base_url}{endpoint}"
-        logger.info(f"Trying '{method} {url}'")
+        self.logger.info(f"Trying '{method} {url}'")
 
         try:
             async with AsyncClient(timeout=self.timeouts[timeout_type]) as client:
@@ -52,7 +52,7 @@ class PokemonTCGAPI:
                 findall(r"\b5\d{2}\b", str(response.status_code))
                 and not self.retried_request
             ):
-                logger.warning("There has been a server error. Trying again")
+                self.logger.warning("There has been a server error. Trying again")
                 self.retried_request = True
 
                 await asyncio.sleep(2.5)
@@ -61,13 +61,13 @@ class PokemonTCGAPI:
             self.retried_request = False
 
             if response.status_code == 401:
-                logger.warning(
+                self.logger.warning(
                     "401: The request got denied due to a faulty API key."
                     "Trying again with a different key if there is another."
                 )
 
             if response.status_code == 429:
-                logger.warning(
+                self.logger.warning(
                     "429: The request got denied due to the API key having run out of tokens."
                     "Trying again with a different key if there is another."
                 )
@@ -81,19 +81,21 @@ class PokemonTCGAPI:
 
             response.raise_for_status()
 
-            logger.info(f"The call has succeeded with code: {response.status_code}")
+            self.logger.info(
+                f"The call has succeeded with code: {response.status_code}"
+            )
             return {"success": True, "data": response.json()["data"]}
 
         except HTTPStatusError as error:
-            logger.warning("API returned an unsuccessful status: %s", error)
+            self.logger.warning("API returned an unsuccessful status: %s", error)
             return {"success": False}
 
         except RequestError as error:
-            logger.warning("API request failed: %s", error)
+            self.logger.warning("API request failed: %s", error)
             return {"success": False}
 
         except (KeyError, ValueError) as error:
-            logger.warning("Failed to parse API response: %s", error)
+            self.logger.warning("Failed to parse API response: %s", error)
             return {"success": False}
 
     async def __get_all_pages(
@@ -152,15 +154,14 @@ class PokemonTCGAPI:
 
     async def get_image(self, image_url: str) -> Any:
         """Download an image and return its bytes and content type."""
-        logger = logging.getLogger(__name__)
 
         try:
-            logger.info(f"Trying 'GET {image_url}'")
+            self.logger.info(f"Trying 'GET {image_url}'")
             async with AsyncClient(timeout=self.timeouts["image"]) as client:
                 response: Response = await client.get(image_url)
 
             if response.status_code == 404:
-                logger.warning("404: Image does not exist.")
+                self.logger.warning("404: Image does not exist.")
 
                 return {
                     "success": True,
@@ -172,19 +173,23 @@ class PokemonTCGAPI:
             content_type = response.headers.get("Content-Type")
 
             if content_type is None:
-                logger.warning("Image response did not contain a Content-Type header.")
+                self.logger.warning(
+                    "Image response did not contain a Content-Type header."
+                )
                 return {"success": False}
 
-            logger.info("Successfully obtained the image!")
+            self.logger.info("Successfully obtained the image!")
             return {
                 "success": True,
                 "data": {"image_data": response.content, "content_type": content_type},
             }
 
         except HTTPStatusError as error:
-            logger.warning("Image request returned an unsuccessful status: %s", error)
+            self.logger.warning(
+                "Image request returned an unsuccessful status: %s", error
+            )
             return {"success": False}
 
         except RequestError as error:
-            logger.warning("Image request failed: %s", error)
+            self.logger.warning("Image request failed: %s", error)
             return {"success": False}

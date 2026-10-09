@@ -1,4 +1,4 @@
-import logging
+from logging import getLogger
 from sqlite3 import Connection, Row, connect
 
 
@@ -8,6 +8,7 @@ class DatabaseSetup:
     def __init__(self, database_path: str):
         """Initialize the database setup with the database file path."""
         self.database_path = database_path
+        self.logger = getLogger(__name__)
 
     def connect_db(self) -> Connection:
         """Create and configure a connection to the SQLite database."""
@@ -18,8 +19,7 @@ class DatabaseSetup:
 
     def integrity_check(self):
         """Check the integrity of the SQLite database."""
-        logger = logging.getLogger(__name__)
-        logger.info("Starting a database integrity check.")
+        self.logger.info("Starting a database integrity check.")
 
         db_context = self.connect_db()
         cursor = db_context.cursor()
@@ -28,9 +28,9 @@ class DatabaseSetup:
         db_context.close()
 
         if str(check[0]).lower() != "ok":
-            logger.error(f"The integrity check came back negative: {check[0]}")
+            self.logger.error(f"The integrity check came back negative: {check[0]}")
         else:
-            logger.info("The integrity check has succeeded.")
+            self.logger.info("The integrity check has succeeded.")
 
         return str(check[0]).lower() == "ok"
 

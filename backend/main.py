@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
 import pytest
 from database.db_setup import DatabaseSetup as database
@@ -28,7 +29,10 @@ async def tests():
     logger = logging.getLogger(__name__)
     logger.info("Executing unit tests...")
 
-    test_result = pytest.main(["tests"])
+    BACKEND_DIR = Path(__file__).resolve().parent
+    TESTS_DIR = BACKEND_DIR / "tests"
+
+    test_result = pytest.main([str(TESTS_DIR)])
 
     if test_result != 0:
         logger.error(f"Unit tests came back with an error: {test_result}")
