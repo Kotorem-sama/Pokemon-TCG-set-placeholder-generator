@@ -8,7 +8,7 @@ from database.db_operations import Card, Card_operations, Set_operations
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
 
-class image_generation_service:
+class ImageGeneration:
     def __init__(self) -> None:
         self.logger = getLogger(__name__)
         self.card_operations = Card_operations()
