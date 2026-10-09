@@ -460,6 +460,9 @@ class Card_operations:
         if image is None:
             return None
 
+        if image["image_data"] is None:
+            return None
+
         return image["image_data"], image["content_type"]
 
     def delete_image(self, db_context: Connection, card_id: int) -> bool:

@@ -7,7 +7,7 @@ import pytest
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
 
-from services.image_generation import image_processor
+from services.image_generation import generate_images_for_card
 
 from database.db_operations import Card_operations, Set_operations
 
@@ -25,13 +25,9 @@ async def main():
     db_context = db.initialise_db(db.connect_db())
 
     current_set = Set_operations().get_set_by_name(db_context, "Ascended Heroes")
-    current_card = Card_operations().get_card_by_id(db_context, 6827)
-    card_variants = Card_operations().get_variants(db_context, 6827)
-    image = Card_operations().get_image(db_context, 6827)
-
-    for variant in card_variants:
-        if image is not None and current_set is not None and current_card is not None and current_card.number is not None:
-            image_processor(image, current_card, current_set.name, variant)
+    current_card = Card_operations().get_card_by_id(db_context, 7034)
+    if current_set is not None and current_card is not None:
+        generate_images_for_card(db_context, current_card, current_set.name)
 
     # await SyncService().sync_sets(db_context)
 
