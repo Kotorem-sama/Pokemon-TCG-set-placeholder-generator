@@ -389,7 +389,7 @@ class ImageGeneration:
                 f"Error generating images for card '{current_card.name}': {e}"
             )
 
-    def generate_images_for_set(self, set_id: int):
+    def generate_images_for_set(self, set_id: int) -> bool:
         """
         Generate images for all cards in a Pokémon set.
 
@@ -405,7 +405,7 @@ class ImageGeneration:
 
             if current_set is None:
                 self.logger.error(f"Set with ID {set_id} not found.")
-                return
+                return False
 
             cards_in_set = self.card_operations.get_cards_by_set(set_id)
             self.logger.info(
@@ -416,5 +416,7 @@ class ImageGeneration:
                 self.generate_images_for_card(card, current_set.name)
 
             self.logger.info(f"Completed image generation for set: {current_set.name}")
+            return True
         except Exception as e:
             self.logger.error(f"Error generating images for set ID {set_id}: {e}")
+            return False

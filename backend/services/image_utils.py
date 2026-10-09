@@ -53,6 +53,6 @@ class ImageUtils:
             self.logger.info(f"Found {len(image_files)} images in set '{set_name}'")
             return image_files
 
-        except Exception as e:
+        except OSError as e:
             self.logger.error(f"Error retrieving images for set '{set_name}': {e}")
             return []

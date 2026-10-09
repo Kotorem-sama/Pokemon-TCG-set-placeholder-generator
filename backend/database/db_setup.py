@@ -34,7 +34,8 @@ class DatabaseSetup:
 
         return str(check[0]).lower() == "ok"
 
-    def initialise_db(self, db_context: Connection) -> Connection:
+    def initialise_db(self) -> Connection:
+        db_context = self.connect_db()
         """Create the database tables if they do not already exist."""
         cursor = db_context.cursor()
 
@@ -86,4 +87,4 @@ class DatabaseSetup:
 
         db_context.commit()
 
-        self.initialise_db(db_context)
+        self.initialise_db()

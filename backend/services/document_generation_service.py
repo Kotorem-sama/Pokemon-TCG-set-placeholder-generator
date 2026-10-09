@@ -1,5 +1,6 @@
 from logging import getLogger
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
@@ -31,52 +32,74 @@ class DocumentGeneration:
     CARD_ASPECT_RATIO = 287 / 400
 
     def __init__(self) -> None:
-        """Initialize DocumentGeneration with database operations."""
+        """Initialize DocumentGeneration."""
         self.logger = getLogger(__name__)
+
+    def _filter_valid_images(self, image_paths: list[str]) -> list[str]:
+        """
+        Filter image paths to only include files that exist.
+
+        Args:
+            image_paths: List of file paths to validate
+
+        Returns:
+            list[str]: Filtered list of valid image paths
+        """
+        valid_images: list[str] = []
+        for path in image_paths:
+            image_path = Path(path)
+            if image_path.is_file():
+                valid_images.append(path)
+            else:
+                self.logger.warning("Image file not found, skipping: %s", image_path)
+
+        return valid_images
 
     def generate_pdf(self, image_paths: list[str]) -> None:
         """
         Generate a PDF document containing card images arranged in a grid layout.
 
-        Creates a multi-page PDF with images arranged in rows and columns. Each page
-        contains a 3x3 grid of cards. Images are scaled to fit the page while maintaining
-        aspect ratio, with configurable margins and gaps between cards.
+        Images that are missing or cannot be read are skipped with a log entry.
+        No gaps are left in the grid for skipped images.
 
         Args:
             image_paths: List of file paths to card images to include in the PDF
 
         Raises:
-            ValueError: If image_paths is empty
-            FileNotFoundError: If any image file cannot be found
-            OSError: If PDF file cannot be created or written
-            Exception: If any unexpected error occurs during PDF generation
+            ValueError: If image_paths is empty or contains no valid images
+            OSError: If the output directory cannot be created or written
         """
+        if not image_paths:
+            self.logger.warning("image_paths list cannot be empty")
+            return
+
+        # Filter to only valid images, no gaps in grid
+        valid_images = self._filter_valid_images(image_paths)
+
+        if not valid_images:
+            self.logger.warning("No valid images found in image_paths")
+            return
+
+        self.logger.info("Starting PDF generation with %d images", len(valid_images))
+
+        output_path = Path(__file__).parent.parent / "data" / "generated"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Name the PDF after the first image's parent directory
+        pdf_name = f"{Path(valid_images[0]).parent.name}.pdf"
+        final_path = output_path / pdf_name
+        self.logger.info("PDF output path: %s", final_path)
+
+        # Write to temp file first, then rename on success
+        with NamedTemporaryFile(
+            suffix=".pdf", dir=output_path, delete=False
+        ) as temp_file:
+            temp_path = temp_file.name
+
         try:
-            # Validate input
-            if not image_paths:
-                raise ValueError("image_paths list cannot be empty")
+            pdf = Canvas(temp_path, pagesize=(self.PAGE_WIDTH, self.PAGE_HEIGHT))
 
-            self.logger.info(f"Starting PDF generation with {len(image_paths)} images")
-
-            # Setup output directory
-            output_path = Path(__file__).parent.parent / "data" / "generated"
-            output_path.mkdir(parents=True, exist_ok=True)
-            self.logger.info(f"Output directory ensured: {output_path}")
-
-            # Generate output file path from the first image's parent directory name
-            file_path = output_path / f"{Path(image_paths[0]).parent.name}.pdf"
-            self.logger.info(f"PDF output path: {file_path}")
-
-            print()
-
-            # Initialize PDF canvas
-            pdf = Canvas(str(file_path), pagesize=(self.PAGE_WIDTH, self.PAGE_HEIGHT))
-            self.logger.info(
-                f"PDF canvas created with page size: {self.PAGE_WIDTH}x{self.PAGE_HEIGHT}"
-            )
-
-            # Calculate card dimensions based on page size and grid layout
-            # The card width is constrained by either the horizontal space or vertical space
+            # Card width is constrained by either horizontal or vertical space
             card_width = min(
                 (self.PAGE_WIDTH - 2 * self.MARGIN_X - (self.COLUMNS - 1) * self.GAP_X)
                 / self.COLUMNS,
@@ -89,44 +112,29 @@ class DocumentGeneration:
                 / self.ROWS
                 * self.CARD_ASPECT_RATIO,
             )
-
             card_height = card_width / self.CARD_ASPECT_RATIO
-            self.logger.info(f"Calculated card dimensions: {card_width}x{card_height}")
 
-            # Iterate through images and place them in the grid
-            for index, path in enumerate(image_paths):
+            for index, path in enumerate(valid_images):
+                slot = index % (self.COLUMNS * self.ROWS)
+
+                if index > 0 and slot == 0:
+                    pdf.showPage()
+
+                column = slot % self.COLUMNS
+                row = slot // self.COLUMNS
+
+                x = self.MARGIN_X + column * (card_width + self.GAP_X)
+                y = (
+                    self.PAGE_HEIGHT
+                    - self.MARGIN_Y
+                    - card_height
+                    - self.LABEL_HEIGHT
+                    - row * (card_height + self.LABEL_HEIGHT + self.GAP_Y)
+                )
+
+                image_path = Path(path)
+
                 try:
-                    # Determine grid position
-                    slot = index % (self.COLUMNS * self.ROWS)
-
-                    # Create new page if current page is full
-                    if index > 0 and slot == 0:
-                        pdf.showPage()
-                        self.logger.info(f"New page created for image {index + 1}")
-
-                    column = slot % self.COLUMNS
-                    row = slot // self.COLUMNS
-
-                    # Calculate position based on grid layout
-                    x = self.MARGIN_X + column * (card_width + self.GAP_X)
-                    y = (
-                        self.PAGE_HEIGHT
-                        - self.MARGIN_Y
-                        - card_height
-                        - self.LABEL_HEIGHT
-                        - row * (card_height + self.LABEL_HEIGHT + self.GAP_Y)
-                    )
-
-                    image_path = Path(path)
-
-                    # Validate image file exists
-                    if not image_path.is_file():
-                        self.logger.warning(
-                            f"Image file not found, skipping: {image_path}"
-                        )
-                        continue
-
-                    # Draw image on PDF
                     pdf.drawImage(  # pyright: ignore[reportUnknownMemberType]
                         ImageReader(image_path),
                         x,
@@ -136,41 +144,33 @@ class DocumentGeneration:
                         preserveAspectRatio=True,
                         anchor="c",
                     )
-                    self.logger.info(
-                        f"Image {index + 1} placed at position ({x}, {y}): {image_path.name}"
-                    )
-
-                except FileNotFoundError as e:
-                    self.logger.error(
-                        f"Image file not found at index {index}: {path} - {e}"
-                    )
-                    continue
-                except Exception as e:
-                    self.logger.error(
-                        f"Error processing image at index {index} ({path}): {e}"
+                except (OSError, ValueError):
+                    self.logger.exception(
+                        "Could not draw image at index %d (%s), skipping",
+                        index,
+                        path,
                     )
                     continue
 
-            # Save the PDF
+            pdf.save()
+
+            # Atomic rename: only happens if save succeeded
+            final_path.unlink(missing_ok=True)
+            Path(temp_path).rename(final_path)
+
+            self.logger.info("PDF generated successfully: %s", final_path)
+
+        except OSError:
+            # Clean up temp file on failure
             try:
-                pdf.save()
-                self.logger.info(f"PDF generated successfully: {file_path}")
-            except OSError as e:
-                self.logger.error(f"Error saving PDF to {file_path}: {e}")
-                raise
-            except Exception as e:
-                self.logger.error(f"Unexpected error while saving PDF: {e}")
-                raise
-
-        except ValueError as e:
-            self.logger.error(f"Invalid input to generate_pdf: {e}")
-            raise
-        except FileNotFoundError as e:
-            self.logger.error(f"File not found during PDF generation: {e}")
-            raise
-        except OSError as e:
-            self.logger.error(f"OS error during PDF generation: {e}")
-            raise
-        except Exception as e:
-            self.logger.error(f"Unexpected error during PDF generation: {e}")
-            raise
+                Path(temp_path).unlink()
+            except OSError:
+                self.logger.warning("Could not delete temp file: %s", temp_path)
+            self.logger.exception("Failed to generate PDF")
+        except Exception:
+            # Clean up temp file on any other error
+            try:
+                Path(temp_path).unlink()
+            except OSError:
+                self.logger.warning("Could not delete temp file: %s", temp_path)
+            self.logger.exception("Unexpected error during PDF generation")

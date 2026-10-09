@@ -6,6 +6,7 @@ from sys import exit
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
 from pytest import main as testmain
+from placeholder_pdf_creator import SetToPDF
 
 
 async def main():
@@ -17,8 +18,9 @@ async def main():
 
     await tests()
 
-    db = database(database_path)
-    db_context = db.initialise_db(db.connect_db())
+    db_context = database(database_path).initialise_db()
+
+    await SetToPDF(db_context).get_document("30th")
 
     db_context.close()
 
