@@ -1,4 +1,4 @@
-import logging
+from logging import getLogger
 from typing import Any
 
 
@@ -27,7 +27,7 @@ class Set:
     @classmethod
     def from_api_to_Set(cls, jsondata: Any):
         """Create a Set from API data, returning a fallback object if invalid."""
-        logger = logging.getLogger(__name__)
+        logger = getLogger(__name__)
         try:
             new_set = cls(
                 jsondata["id"],
@@ -92,7 +92,7 @@ class Card:
     @classmethod
     def from_api_to_Card(cls, jsondata: Any, set_id: int):
         """Create a Card from API data, returning a fallback object if invalid."""
-        logger = logging.getLogger(__name__)
+        logger = getLogger(__name__)
         try:
             new_card = cls(
                 jsondata["id"],

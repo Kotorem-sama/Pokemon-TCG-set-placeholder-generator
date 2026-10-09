@@ -1,10 +1,10 @@
-import logging
-import os
-import re
+from logging import getLogger
+from os import getenv
+from re import compile
 
 from dotenv import load_dotenv
 
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
 
 """Load API configuration from the .env file."""
 if not load_dotenv():
@@ -15,7 +15,7 @@ if not load_dotenv():
 
 API_KEYS: list[str] = [
     key.strip()
-    for key in os.getenv("POKEMON_TCG_API_KEY_LIST", "").split(",")
+    for key in getenv("POKEMON_TCG_API_KEY_LIST", "").split(",")
     if key.strip()
 ]
 
@@ -28,7 +28,7 @@ TIMEOUTS = {
 }
 
 # TCGAPI keys must use the format tcg_live_<40 hexadecimal characters>.
-API_KEY_PATTERN = re.compile(r"^tcg_live_[a-f0-9]{40}$")
+API_KEY_PATTERN = compile(r"^tcg_live_[a-f0-9]{40}$")
 
 for key in API_KEYS.copy():
     if not API_KEY_PATTERN.fullmatch(key):

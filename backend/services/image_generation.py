@@ -1,5 +1,5 @@
-import logging
 from io import BytesIO
+from logging import getLogger
 from os.path import isfile
 from pathlib import Path
 from sqlite3 import Connection
@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
 class image_generation_service:
     def __init__(self) -> None:
-        self.logger = logging.getLogger(__name__)
+        self.logger = getLogger(__name__)
         self.card_operations = Card_operations()
         self.set_operations = Set_operations()
 

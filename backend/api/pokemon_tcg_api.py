@@ -1,4 +1,4 @@
-import asyncio
+from asyncio import sleep
 from logging import getLogger
 from re import findall
 from typing import Any
@@ -55,7 +55,7 @@ class PokemonTCGAPI:
                 self.logger.warning("There has been a server error. Trying again")
                 self.retried_request = True
 
-                await asyncio.sleep(2.5)
+                await sleep(2.5)
                 return await self._request(method, endpoint, headers, timeout_type)
 
             self.retried_request = False

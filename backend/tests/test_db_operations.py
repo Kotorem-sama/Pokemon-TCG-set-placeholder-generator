@@ -1,13 +1,13 @@
 from collections.abc import Generator
 from sqlite3 import Connection
 
-import pytest
 from classes import Card, Set
 from database.db_operations import Card_operations, Set_operations
 from database.db_setup import DatabaseSetup
+from pytest import fixture
 
 
-@pytest.fixture
+@fixture
 def db_context() -> Generator[Connection, None, None]:
     db = DatabaseSetup(":memory:")
     connection = db.connect_db()
@@ -18,22 +18,22 @@ def db_context() -> Generator[Connection, None, None]:
     connection.close()
 
 
-@pytest.fixture
+@fixture
 def set_operations() -> Set_operations:
     return Set_operations()
 
 
-@pytest.fixture
+@fixture
 def card_operations() -> Card_operations:
     return Card_operations()
 
 
-@pytest.fixture
+@fixture
 def test_set() -> Set:
     return Set(1, "Test Set", "test-set", "TST", "2026-01-01", 3, 0)
 
 
-@pytest.fixture
+@fixture
 def test_card() -> Card:
     return Card(1, 1, "Test Card", "001", "Common", [])
 

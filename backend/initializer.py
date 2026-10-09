@@ -1,8 +1,7 @@
-import logging
-import subprocess
-import sys
-from logging import Logger as LoggerModel
+from logging import WARNING, FileHandler, Logger, StreamHandler, basicConfig, getLogger
 from pathlib import Path
+from subprocess import CalledProcessError, run
+from sys import executable
 
 from database.db_setup import DatabaseSetup as database
 
@@ -17,28 +16,28 @@ def startup() -> str | None:
     return setup_database(logger)
 
 
-def setup_logging() -> LoggerModel:
+def setup_logging() -> Logger:
     """Configure application logging for both the console and log file."""
-    logging.basicConfig(
-        level=logging.WARNING,
+    basicConfig(
+        level=WARNING,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler("pokemon_tcg_sync.log"),
-            logging.StreamHandler(),  # Console output
+            FileHandler("pokemon_tcg_sync.log"),
+            StreamHandler(),  # Console output
         ],
     )
-    return logging.getLogger(__name__)
+    return getLogger(__name__)
 
 
-def install_dependencies(logger: LoggerModel) -> bool:
+def install_dependencies(logger: Logger) -> bool:
     """Install the project's dependencies from requirements.txt."""
     BACKEND_DIR: Path = Path(__file__).resolve().parent
     logger.info("Installing dependencies...")
 
     try:
-        subprocess.run(
+        run(
             [
-                sys.executable,
+                executable,
                 "-m",
                 "pip",
                 "install",
@@ -52,12 +51,12 @@ def install_dependencies(logger: LoggerModel) -> bool:
         logger.info("Installed dependencies succesfully.")
         return True
 
-    except subprocess.CalledProcessError as error:
+    except CalledProcessError as error:
         logger.error(f"Failed to install dependencies: {error.stderr}")
         return False
 
 
-def setup_database(logger: LoggerModel) -> str | None:
+def setup_database(logger: Logger) -> str | None:
     """Create and validate the application's SQLite database."""
     BACKEND_DIR: Path = Path(__file__).resolve().parent
     DATABASE_DIR = BACKEND_DIR / "database"
