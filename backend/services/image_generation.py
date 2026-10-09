@@ -7,6 +7,7 @@ from sqlite3 import Connection
 from database.db_operations import Card, Card_operations, Set_operations
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
+
 class image_generation_service:
     def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
@@ -16,10 +17,10 @@ class image_generation_service:
     def retreive_extension(self, image_tuple: tuple[bytes, str]) -> str:
         """
         Determine file extension based on MIME type.
-        
+
         Args:
             image_tuple: A tuple containing (image_bytes, mime_type_string)
-            
+
         Returns:
             str: File extension (e.g., ".jpg", ".png") or ".fail" if MIME type is not recognized
         """
@@ -50,14 +51,13 @@ class image_generation_service:
             self.logger.error(f"Error retrieving extension from image tuple: {e}")
             return ".fail"
 
-
     def sanitize_filename(self, filename: str) -> str:
         """
         Remove invalid characters from filename to ensure filesystem compatibility.
-        
+
         Args:
             filename: The filename to sanitize
-            
+
         Returns:
             str: Sanitized filename with invalid characters removed or replaced
         """
@@ -72,19 +72,20 @@ class image_generation_service:
             self.logger.error(f"Error sanitizing filename '{filename}': {e}")
             return "unnamed"
 
-
-    def save_image(self, extension: str, file_name: str, set_name: str, image: Image.Image):
+    def save_image(
+        self, extension: str, file_name: str, set_name: str, image: Image.Image
+    ):
         """
         Save an image to the generated data directory with directory structure based on set name.
-        
+
         Creates the directory structure if it doesn't exist. Skips saving if file already exists.
-        
+
         Args:
             extension: File extension (e.g., ".jpg", ".png")
             file_name: Name of the file (will be sanitized)
             set_name: Name of the Pokémon set (will be sanitized)
             image: PIL Image object to save
-            
+
         Raises:
             OSError: If directory creation or image saving fails
         """
@@ -105,17 +106,22 @@ class image_generation_service:
             image.save(image_directory)
             self.logger.info(f"Image saved successfully: {image_directory}")
         except OSError as e:
-            self.logger.error(f"OS error while saving image '{file_name}' for set '{set_name}': {e}")
+            self.logger.error(
+                f"OS error while saving image '{file_name}' for set '{set_name}': {e}"
+            )
         except Exception as e:
             self.logger.error(f"Unexpected error while saving image: {e}")
 
-
     def image_processor(
-        self, current_image: tuple[bytes, str], current_card: Card, set_name: str, variant: str
+        self,
+        current_image: tuple[bytes, str],
+        current_card: Card,
+        set_name: str,
+        variant: str,
     ):
         """
         Process a card image by converting it to grayscale and combining with template overlay.
-        
+
         Args:
             current_image: Tuple containing (image_bytes, mime_type)
             current_card: Card object with card metadata
@@ -124,7 +130,9 @@ class image_generation_service:
         """
         try:
             extension = self.retreive_extension(current_image)
-            self.logger.info(f"Processing image for card: {current_card.name} ({variant})")
+            self.logger.info(
+                f"Processing image for card: {current_card.name} ({variant})"
+            )
 
             with Image.open(BytesIO(current_image[0])) as im:
                 im = self.combine_with_template(im, variant, current_card.rarity)
@@ -137,28 +145,32 @@ class image_generation_service:
                     grayscale_image,
                 )
         except Exception as e:
-            self.logger.error(f"Error processing image for card '{current_card.name}': {e}")
-
+            self.logger.error(
+                f"Error processing image for card '{current_card.name}': {e}"
+            )
 
     def get_template(self, variant: str):
         """
         Load a template image and adjust its alpha channel opacity.
-        
+
         Args:
             variant: Template variant name (e.g., "Holo", "Reverse Holo")
-            
+
         Returns:
             PIL Image: Template image with adjusted opacity, or None if template not found
         """
         try:
             template_path = (
-                Path(__file__).resolve().parent.parent / "data" / "templates" / f"{variant}.png"
+                Path(__file__).resolve().parent.parent
+                / "data"
+                / "templates"
+                / f"{variant}.png"
             )
-            
+
             if not template_path.is_file():
                 self.logger.warning(f"Template file not found: {template_path}")
                 return None
-            
+
             template = Image.open(template_path).convert("RGBA")
 
             alpha_channel = template.getchannel("A")
@@ -173,24 +185,27 @@ class image_generation_service:
             self.logger.error(f"Error loading template '{variant}': {e}")
             return None
 
-
-    def combine_with_template(self, im: Image.Image, variant: str, card_rarity: str | None):
+    def combine_with_template(
+        self, im: Image.Image, variant: str, card_rarity: str | None
+    ):
         """
         Combine a card image with a template overlay if applicable.
-        
+
         Checks if the card rarity is in the special rarities list. If the template file
         exists and rarity is not special, the template is composited over the base image.
-        
+
         Args:
             im: Base card image (PIL Image)
             variant: Template variant to use
             card_rarity: Rarity of the card (may be None)
-            
+
         Returns:
             PIL Image: Combined image or original image if no template is applied
         """
         try:
-            template_path = Path(__file__).resolve().parent.parent / "data" / "templates"
+            template_path = (
+                Path(__file__).resolve().parent.parent / "data" / "templates"
+            )
             rarities = [
                 "Double Rare",
                 "Illustration Rare",
@@ -207,13 +222,17 @@ class image_generation_service:
             base_image = im.convert("RGBA")
 
             if not template_file.is_file() or card_rarity in rarities:
-                self.logger.info(f"No template applied for {variant} (rarity: {card_rarity})")
+                self.logger.info(
+                    f"No template applied for {variant} (rarity: {card_rarity})"
+                )
                 return base_image
 
             template = self.get_template(variant)
-            
+
             if template is None:
-                self.logger.warning(f"Template is None, returning base image for variant: {variant}")
+                self.logger.warning(
+                    f"Template is None, returning base image for variant: {variant}"
+                )
                 return base_image
 
             template = template.convert("RGBA")
@@ -222,7 +241,9 @@ class image_generation_service:
 
             if template.size != target_size:
                 template = ImageOps.fit(template, base_image.size)
-                self.logger.info(f"Template resized from {template.size} to {target_size}")
+                self.logger.info(
+                    f"Template resized from {template.size} to {target_size}"
+                )
 
             result = Image.alpha_composite(base_image, template)
             self.logger.info(f"Template combined successfully for variant: {variant}")
@@ -230,7 +251,6 @@ class image_generation_service:
         except Exception as e:
             self.logger.error(f"Error combining template for variant '{variant}': {e}")
             return im.convert("RGBA")
-
 
     def generate_placeholder(
         self,
@@ -242,10 +262,10 @@ class image_generation_service:
     ):
         """
         Generate a placeholder card image with card name and variant text.
-        
+
         Creates a light gray rectangular card with rounded corners and centered text.
         Text is wrapped across multiple lines if it exceeds the maximum width.
-        
+
         Args:
             current_card: Card object containing name and number
             variant: Card variant (e.g., "Holo", "Reverse Holo")
@@ -254,8 +274,10 @@ class image_generation_service:
             height: Image height in pixels (default: 1039)
         """
         try:
-            self.logger.info(f"Generating placeholder for {current_card.name} ({variant})")
-            
+            self.logger.info(
+                f"Generating placeholder for {current_card.name} ({variant})"
+            )
+
             image = Image.new("RGB", (width, height), color="#E0E0E0")
             draw = ImageDraw.Draw(image)
 
@@ -274,7 +296,7 @@ class image_generation_service:
                 outline="#777777",
                 width=border_width,
             )
-            
+
             # Centered placeholder text
             try:
                 font = ImageFont.truetype("arial.ttf", max(16, width // 16))
@@ -321,19 +343,27 @@ class image_generation_service:
                 y += line_height + 8
 
             # Return PNG bytes instead of saving a file
-            self.save_image(".png", f"{current_card.number} - {current_card.name} ({variant})", set_name, image)
+            self.save_image(
+                ".png",
+                f"{current_card.number} - {current_card.name} ({variant})",
+                set_name,
+                image,
+            )
             self.logger.info(f"Placeholder saved for {current_card.name} ({variant})")
         except Exception as e:
-            self.logger.error(f"Error generating placeholder for card '{current_card.name}': {e}")
+            self.logger.error(
+                f"Error generating placeholder for card '{current_card.name}': {e}"
+            )
 
-
-    def generate_images_for_card(self, db_context: Connection, current_card: Card, set_name: str):
+    def generate_images_for_card(
+        self, db_context: Connection, current_card: Card, set_name: str
+    ):
         """
         Generate images for all variants of a card.
-        
+
         Retrieves all variants and the card's image from the database. If no image exists,
         generates placeholder images for each variant. Otherwise, processes the actual image.
-        
+
         Args:
             db_context: Database connection context
             current_card: Card object to generate images for
@@ -341,12 +371,16 @@ class image_generation_service:
         """
         try:
             self.logger.info(f"Generating images for card: {current_card.name}")
-            
-            card_variants = self.card_operations.get_variants(db_context, current_card.id)
+
+            card_variants = self.card_operations.get_variants(
+                db_context, current_card.id
+            )
             card_image = self.card_operations.get_image(db_context, current_card.id)
 
             if card_image is None:
-                self.logger.info(f"No image found for {current_card.name}, generating placeholders")
+                self.logger.info(
+                    f"No image found for {current_card.name}, generating placeholders"
+                )
                 for variant in card_variants:
                     self.generate_placeholder(current_card, variant, set_name, 287, 400)
             else:
@@ -354,22 +388,23 @@ class image_generation_service:
                 for variant in card_variants:
                     self.image_processor(card_image, current_card, set_name, variant)
         except Exception as e:
-            self.logger.error(f"Error generating images for card '{current_card.name}': {e}")
-
+            self.logger.error(
+                f"Error generating images for card '{current_card.name}': {e}"
+            )
 
     def generate_images_for_set(self, db_context: Connection, set_id: int):
         """
         Generate images for all cards in a Pokémon set.
-        
+
         Retrieves all cards for the set and generates images for each card across all variants.
-        
+
         Args:
             db_context: Database connection context
             set_id: ID of the Pokémon set
         """
         try:
             self.logger.info(f"Starting image generation for set ID: {set_id}")
-            
+
             current_set = self.set_operations.get_set_by_id(db_context, set_id)
 
             if current_set is None:
@@ -377,11 +412,13 @@ class image_generation_service:
                 return
 
             cards_in_set = self.card_operations.get_cards_by_set(db_context, set_id)
-            self.logger.info(f"Found {len(cards_in_set)} cards in set '{current_set.name}'")
+            self.logger.info(
+                f"Found {len(cards_in_set)} cards in set '{current_set.name}'"
+            )
 
             for card in cards_in_set:
                 self.generate_images_for_card(db_context, card, current_set.name)
-            
+
             self.logger.info(f"Completed image generation for set: {current_set.name}")
         except Exception as e:
             self.logger.error(f"Error generating images for set ID {set_id}: {e}")

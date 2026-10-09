@@ -5,7 +5,6 @@ import sys
 import pytest
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
-from services.image_generation import image_generation_service
 
 
 async def main():
