@@ -4,3 +4,5 @@ uvicorn
 Pillow
 reportlab
 tzdata
+python-dotenv
+pytest
