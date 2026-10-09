@@ -5,6 +5,7 @@ from os.path import isfile
 from database.db_operations import Card, Card_operations
 from sqlite3 import Connection
 
+
 def retreive_extension(image_tuple: tuple[bytes, str]) -> str:
     match image_tuple[1].lower():
         case "image/jpeg":
@@ -12,37 +13,49 @@ def retreive_extension(image_tuple: tuple[bytes, str]) -> str:
         case _:
             return ".fail"
 
-def sanitize_filename(filename:str) -> str:
+
+def sanitize_filename(filename: str) -> str:
     invalid_characters = ["<", ">", ":", '"', "\\", "|", "?", "*"]
 
     for character in invalid_characters:
         filename = filename.replace(character, "")
-    
+
     return filename.replace("/", "-")
 
-def save_image(extension:str, file_name:str, set_name:str, image: Image.Image):
+
+def save_image(extension: str, file_name: str, set_name: str, image: Image.Image):
     set_name = sanitize_filename(set_name)
     file_name = sanitize_filename(file_name)
-    SET_DIR: Path = Path(__file__).resolve().parent.parent / "data" / "generated" / set_name
+    SET_DIR: Path = (
+        Path(__file__).resolve().parent.parent / "data" / "generated" / set_name
+    )
     SET_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     image_directory = SET_DIR / f"{file_name}{extension}"
     if isfile(image_directory):
         return
 
     image.save(image_directory)
 
-def image_processor(current_image: tuple[bytes, str], current_card: Card, set_name: str, variant:str):
+
+def image_processor(
+    current_image: tuple[bytes, str], current_card: Card, set_name: str, variant: str
+):
     extension = retreive_extension(current_image)
 
     with Image.open(BytesIO(current_image[0])) as im:
         im = combine_with_template(im, variant, current_card.rarity)
 
         grayscale_image = im.convert("L")
-        save_image(extension, f"{current_card.number} - {variant}", set_name, grayscale_image)
+        save_image(
+            extension, f"{current_card.number} - {variant}", set_name, grayscale_image
+        )
 
-def get_template(variant:str):
-    template_path = Path(__file__).resolve().parent.parent / "data" / "templates" / f"{variant}.png"
+
+def get_template(variant: str):
+    template_path = (
+        Path(__file__).resolve().parent.parent / "data" / "templates" / f"{variant}.png"
+    )
     template = Image.open(template_path).convert("RGBA")
 
     alpha_channel = template.getchannel("A")
@@ -53,8 +66,9 @@ def get_template(variant:str):
 
     return template
 
-def combine_with_template(im: Image.Image, variant:str, card_rarity:str | None):
-    template_path = Path(__file__).resolve().parent.parent / "data" / "templates"#
+
+def combine_with_template(im: Image.Image, variant: str, card_rarity: str | None):
+    template_path = Path(__file__).resolve().parent.parent / "data" / "templates"  #
     rarities = [
         "Double Rare",
         "Illustration Rare",
@@ -74,15 +88,13 @@ def combine_with_template(im: Image.Image, variant:str, card_rarity:str | None):
 
     template = get_template(variant).convert("RGBA")
 
-    target_size: tuple[int, int] = (
-        base_image.width,
-        base_image.height
-    )
+    target_size: tuple[int, int] = (base_image.width, base_image.height)
 
     if template.size != target_size:
         template = ImageOps.fit(template, base_image.size)
 
     return Image.alpha_composite(base_image, template)
+
 
 def generate_placeholder(
     current_card: Card,
@@ -157,6 +169,7 @@ def generate_placeholder(
 
     # Return PNG bytes instead of saving a file
     save_image(".png", f"{current_card.number} - {variant}", set_name, image)
+
 
 def generate_images_for_card(db_context: Connection, current_card: Card, set_name: str):
     card_variants = Card_operations().get_variants(db_context, current_card.id)
