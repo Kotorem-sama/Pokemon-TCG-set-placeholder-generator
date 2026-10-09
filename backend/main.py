@@ -7,9 +7,11 @@ import pytest
 from database.db_setup import DatabaseSetup as database
 from initializer import startup
 
-from services.image_generation import generate_images_for_card
+from services.image_generation import generate_images_for_set
 
-from database.db_operations import Card_operations, Set_operations
+from database.db_operations import Card_operations
+
+from services.sync_service import SyncService
 
 
 async def main():
@@ -19,15 +21,15 @@ async def main():
     if database_path is None:
         sys.exit()
 
-    # await tests()
+    await tests()
 
     db = database(database_path)
     db_context = db.initialise_db(db.connect_db())
 
-    current_set = Set_operations().get_set_by_name(db_context, "Ascended Heroes")
-    current_card = Card_operations().get_card_by_id(db_context, 7034)
-    if current_set is not None and current_card is not None:
-        generate_images_for_card(db_context, current_card, current_set.name)
+    Card_operations().reset_set_cards(db_context, 5500216)
+    await SyncService().sync_set(db_context, 5500216)
+
+    generate_images_for_set(db_context, 5500216)
 
     # await SyncService().sync_sets(db_context)
 

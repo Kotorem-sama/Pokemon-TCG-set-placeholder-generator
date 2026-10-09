@@ -87,19 +87,51 @@ class SyncService:
             response["data"]["content_type"],
         )
 
-    async def sync_card_variants(self, db_context: Connection, card_id: int) -> bool:
+    async def sync_card_variants(
+        self, db_context: Connection, card_id: int, rarity: str
+    ) -> bool:
         """Synchronise all available variants for a card."""
         logger = logging.getLogger(__name__)
         logger.info(f"Syncing all card variants '{card_id}'.")
 
         api_response = await self.pokemontcgapi.get_card_prices(card_id)
 
+        variants: list[str] = []
+        rarities = [
+            "Double Rare",
+            "Illustration Rare",
+            "Mega Attack Rare",
+            "Mega Hyper Rare",
+            "Promo",
+            "Special Illustration Rare",
+            "Ultra Rare",
+            "Futuristic Rare",
+            "RBG Rare"
+        ]
+
         if not api_response["success"]:
             return False
 
+        if rarity in rarities:
+            if not self.card_operations.add_variant(db_context, card_id, "Holofoil"):
+                # Remove any variants already added if the synchronisation fails.
+                self.card_operations.delete_variants(db_context, card_id)
+                return False
+            return True
+
         for variant in api_response["data"]:
+            current_variant = variant["printing"]
+
+            if current_variant == "Foil":
+                current_variant = "Holofoil"
+
+            if current_variant in variants:
+                continue
+
+            variants.append(current_variant)
+
             if not self.card_operations.add_variant(
-                db_context, card_id, variant["printing"]
+                db_context, card_id, current_variant
             ):
                 # Remove any variants already added if the synchronisation fails.
                 self.card_operations.delete_variants(db_context, card_id)
@@ -176,7 +208,9 @@ class SyncService:
             variants = self.card_operations.get_variants(db_context, card["id"])
 
             if not variants:
-                if not await self.sync_card_variants(db_context, card["id"]):
+                if not await self.sync_card_variants(
+                    db_context, card["id"], card["rarity"]
+                ):
                     return False
 
         logger.info(f"Finished synchronising cards of set '{set_id}'!")

@@ -2,7 +2,7 @@ from PIL import Image, ImageEnhance, ImageOps, ImageDraw, ImageFont
 from io import BytesIO
 from pathlib import Path
 from os.path import isfile
-from database.db_operations import Card, Card_operations
+from database.db_operations import Card, Card_operations, Set_operations
 from sqlite3 import Connection
 
 
@@ -48,7 +48,10 @@ def image_processor(
 
         grayscale_image = im.convert("L")
         save_image(
-            extension, f"{current_card.number} - {variant}", set_name, grayscale_image
+            extension,
+            f"{current_card.number} - {current_card.name} ({variant})",
+            set_name,
+            grayscale_image,
         )
 
 
@@ -78,6 +81,8 @@ def combine_with_template(im: Image.Image, variant: str, card_rarity: str | None
         "RGB Rare",
         "Special Illustration Rare",
         "Ultra Rare",
+        "Futuristic Rare",
+        "RBG Rare"
     ]
 
     template_file = template_path / f"{variant}.png"
@@ -181,3 +186,16 @@ def generate_images_for_card(db_context: Connection, current_card: Card, set_nam
     else:
         for variant in card_variants:
             image_processor(card_image, current_card, set_name, variant)
+
+
+def generate_images_for_set(db_context: Connection, set_id: int):
+    current_set = Set_operations().get_set_by_id(db_context, set_id)
+
+    if current_set is None:
+        print(f"Set with ID {set_id} not found.")
+        return
+
+    cards_in_set = Card_operations().get_cards_by_set(db_context, set_id)
+
+    for card in cards_in_set:
+        generate_images_for_card(db_context, card, current_set.name)
