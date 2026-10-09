@@ -82,7 +82,7 @@ def combine_with_template(im: Image.Image, variant: str, card_rarity: str | None
         "Special Illustration Rare",
         "Ultra Rare",
         "Futuristic Rare",
-        "RBG Rare"
+        "RBG Rare",
     ]
 
     template_file = template_path / f"{variant}.png"

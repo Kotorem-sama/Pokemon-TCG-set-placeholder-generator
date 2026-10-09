@@ -106,7 +106,7 @@ class SyncService:
             "Special Illustration Rare",
             "Ultra Rare",
             "Futuristic Rare",
-            "RBG Rare"
+            "RBG Rare",
         ]
 
         if not api_response["success"]:
