@@ -20,7 +20,7 @@ def startup() -> str | None:
 def setup_logging() -> LoggerModel:
     """Configure application logging for both the console and log file."""
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.FileHandler("pokemon_tcg_sync.log"),
