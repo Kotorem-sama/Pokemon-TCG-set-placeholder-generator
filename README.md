@@ -1,8 +1,8 @@
 # Pokémon TCG Set Placeholder Generator
 
-This project is a local-only Python utility for fetching Pokémon TCG set and card data from tcgapi.dev and saving it into a SQLite database. It is designed to support future generation of a Word document containing placeholders for a full Pokémon set.
+This project is a local-only Python utility for fetching Pokémon TCG set and card data from tcgapi.dev, saving it in SQLite, and generating card images and a PDF placeholder sheet.
 
-Current status: the data sync layer is in place, but the final document-generation feature is not yet implemented.
+The current launcher targets the `ME: 30th Celebration` set. The set must already exist in the database; the launcher does not populate the set catalog.
 
 ## What it does
 
@@ -14,22 +14,21 @@ Current status: the data sync layer is in place, but the final document-generati
   - `cards`
   - `card_variants`
   - `card_images`
-- Supports future placeholder document generation from the synced dataset
+- Generates card images and a PDF from a set already present in the database
 
 ## Stack
 
 - Python
 - SQLite
 - `httpx` for API requests
-- `fastapi` and `uvicorn` are included in dependencies but are not currently the main app runtime
-- `python-docx` is included for future document generation
+- `fastapi` and `uvicorn` are listed in dependencies but are not used by the current launcher
+- `Pillow` and `reportlab` are used for image and PDF generation
 
 ## Repository layout
 
 ```text
 .
 ├── .gitignore
-├── .env.example
 ├── README.md
 └── backend/
     ├── api/
@@ -37,44 +36,43 @@ Current status: the data sync layer is in place, but the final document-generati
     ├── database/
     │   ├── db_setup.py               # SQLite schema setup
     │   ├── db_operations.py          # CRUD operations for sets/cards/images
-    │   └── __init__.py
+    │   └── pokemon_cards.db          # Created at runtime
     ├── services/
-    │   ├── SyncService.py            # Sync logic for sets/cards/images
-    │   └── __init__.py
+    │   ├── sync_service.py           # Synchronization logic
+    │   ├── image_generation_service.py
+    │   └── document_generation_service.py
     ├── classes.py                   # Set and Card model classes
     ├── config.py                    # Dotenv-based config loading
     ├── initializer.py               # Dependency install + DB bootstrapping
+    ├── placeholder_pdf_creator.py   # Orchestrates sync, images, and PDF generation
     ├── main.py                      # Entry point for running sync tasks
     ├── requirements.txt             # Python dependencies
-    └── tests/                       # Placeholder area for future automated tests
+    ├── .example.env                 # Example API-key configuration
+    └── tests/                       # Database operation tests
 ```
 
 ## Setup
 
-1. Clone the repository.
-2. Create a Python virtual environment if desired.
-3. Install dependencies:
+1. Create and activate a Python virtual environment (recommended):
 
 ```bash
-cd backend
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
 ```
 
-4. Create a `.env` file from the example:
+2. Create `backend/.env` from the example file:
 
 ```bash
-cp .env.example .env
+cp backend/.example.env backend/.env
 ```
 
-5. Add your API key(s):
+3. Set one or more valid API keys in `backend/.env`:
 
 ```env
-POKEMON_TCG_API_KEY_LIST=your-api-key-here,backup-key-here
+POKEMON_TCG_API_KEY_LIST=tcg_live_<40-hex-characters>,tcg_live_<another-40-hex-characters>
 ```
 
-The code accepts a comma-separated list of keys, so you can provide multiple tokens if needed.
+The config loader accepts a comma-separated list and filters keys that do not match the `tcg_live_` plus 40 hexadecimal characters format. The application installs packages from `backend/requirements.txt` during startup.
 
 ## Running the project
 
@@ -84,17 +82,20 @@ From the repository root, run:
 python backend/main.py
 ```
 
-This currently triggers the startup sequence and syncs a fixed set (`"Ascended heroes"`) by default.
+The launcher installs dependencies, creates and checks the SQLite database, runs the tests in `backend/tests`, and asks the PDF workflow to process `ME: 30th Celebration`.
+
+The requested set must already be in the database. The launcher does not call the set-catalog sync method, so a newly created database has no set to process and no PDF will be produced. The API key is needed when the workflow syncs cards and images for a set.
 
 ## Current behavior
 
-When the app runs, it:
+When the requested set is present, the PDF workflow:
 
-1. Initializes the SQLite database if it does not exist
-2. Installs Python dependencies from `backend/requirements.txt`
-3. Fetches set metadata from the API
-4. Pulls card data for the configured set
-5. Saves metadata, cards, variants, and card images into the database
+1. Synchronizes the set's information and card data with the API
+2. Saves card metadata, variants, and downloaded images in SQLite
+3. Generates image files for the set, including template overlays where applicable
+4. Creates an A4 PDF with up to nine card images per page
+
+Generated images and PDFs are written under `backend/data/generated/`. The PDF is named after the set's generated-image folder.
 
 ## Database
 
@@ -109,15 +110,14 @@ The schema includes:
 - `sets`: metadata for each Pokémon TCG set
 - `cards`: card-level data for each card in a set
 - `card_variants`: printings/variant names for cards
-- `card_images`: image blobs and content type information
+- `card_images`: downloaded image blobs and content type information
 
 ## Important note
 
-This project is not yet complete as a full placeholder document generator. The code currently covers the API sync and persistence layer. The next steps are expected to include:
+The current launcher is not yet a set-selection workflow. It is hard-coded to one set name, and a set catalog must be populated in the database before it can generate output. Further work could include:
 
-- generating a Word document from saved data
-- formatting placeholders for a Pokémon set
-- creating a user-friendly CLI or workflow to choose which set to generate
+- synchronizing the set catalog from the API in the launcher
+- allowing users to choose which set to generate
 - additional validation and tests
 
 ## Contributing
@@ -125,7 +125,8 @@ This project is not yet complete as a full placeholder document generator. The c
 If you want to extend the project, the main areas to look at are:
 
 - `backend/api/pokemon_tcg_api.py` for API access
-- `backend/services/SyncService.py` for synchronization logic
+- `backend/services/sync_service.py` for synchronization logic
+- `backend/services/image_generation_service.py` and `backend/services/document_generation_service.py` for output generation
 - `backend/database/db_operations.py` for data storage and queries
 - `backend/main.py` for starting the sync flow
 
