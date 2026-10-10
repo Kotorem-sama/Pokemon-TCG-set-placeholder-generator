@@ -263,6 +263,14 @@ class Card_operations:
         """Retrieve all cards belonging to a specific set."""
         return self.__get_cards_by_query("WHERE set_id = :set_id", {"set_id": set_id})
 
+    def get_cards_amount(self, set_id: int) -> int:
+        self.logger.info(f"Trying to get the amount of cards that are in set '{set_id}'.")
+        cursor = self.db_context.cursor()
+
+        cursor.execute("SELECT COUNT(*) FROM cards WHERE set_id = (:set_id)", {"set_id": set_id})
+
+        return cursor.fetchone()[0]
+
     def get_cards_by_rarity(self, rarity: str) -> list[Card]:
         """Retrieve all cards with a specific rarity."""
         return self.__get_cards_by_query("WHERE rarity = :rarity", {"rarity": rarity})

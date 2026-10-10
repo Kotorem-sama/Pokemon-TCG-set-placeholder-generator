@@ -189,21 +189,16 @@ class ImageGeneration:
                 Path(__file__).resolve().parent.parent / "data" / "templates"
             )
             rarities = [
-                "Double Rare",
-                "Illustration Rare",
-                "Mega Attack Rare",
-                "Mega Hyper Rare",
-                "Promo",
-                "RBG Rare",
-                "Special Illustration Rare",
-                "Ultra Rare",
-                "Futuristic Rare",
-            ]
+                        "Uncommon",
+                        "Common",
+                        "Rare",
+                        "Promo"
+                    ]
 
             template_file = template_path / f"{variant}.png"
             base_image = im.convert("RGBA")
 
-            if not template_file.is_file() or card_rarity in rarities:
+            if not template_file.is_file() or card_rarity not in rarities:
                 self.logger.info(
                     f"No template applied for {variant} (rarity: {card_rarity})"
                 )
