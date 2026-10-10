@@ -9,8 +9,9 @@ class DatabaseSetup:
         """Initialize the database setup with the database file path."""
         self.database_path = database_path
         self.logger = getLogger(__name__)
+        self.db_context = self.__connect_db()
 
-    def connect_db(self) -> Connection:
+    def __connect_db(self) -> Connection:
         """Create and configure a connection to the SQLite database."""
         conn = connect(self.database_path)
         conn.execute("PRAGMA foreign_keys = ON")
@@ -21,11 +22,10 @@ class DatabaseSetup:
         """Check the integrity of the SQLite database."""
         self.logger.info("Starting a database integrity check.")
 
-        db_context = self.connect_db()
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         check = cursor.execute("PRAGMA integrity_check").fetchone()
-        db_context.close()
+        cursor.close()
 
         if str(check[0]).lower() != "ok":
             self.logger.error(f"The integrity check came back negative: {check[0]}")
@@ -34,10 +34,9 @@ class DatabaseSetup:
 
         return str(check[0]).lower() == "ok"
 
-    def initialise_db(self) -> Connection:
-        db_context = self.connect_db()
+    def initialise_db(self):
         """Create the database tables if they do not already exist."""
-        cursor = db_context.cursor()
+        cursor = self.db_context.cursor()
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
         id INTEGER PRIMARY KEY,
@@ -72,9 +71,7 @@ class DatabaseSetup:
         FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
         )""")
 
-        db_context.commit()
-
-        return db_context
+        self.db_context.commit()
 
     def reset_db(self, db_context: Connection, databases: list[str] | None = None):
         """Drop the selected database tables and recreate the database structure."""

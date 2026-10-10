@@ -10,11 +10,12 @@ from pytest import fixture
 @fixture
 def db_context() -> Generator[Connection, None, None]:
     db = DatabaseSetup(":memory:")
-    connection = db.initialise_db()  # returns the connection that has the tables
+    db.initialise_db()  # returns the connection that has the tables
 
-    yield connection
+    yield db.db_context
 
-    connection.close()
+    db.db_context.close()
+
 
 @fixture
 def set_operations(db_context: Connection) -> Set_operations:

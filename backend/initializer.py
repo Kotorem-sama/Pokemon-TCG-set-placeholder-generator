@@ -3,10 +3,10 @@ from pathlib import Path
 from subprocess import CalledProcessError, run
 from sys import executable
 
-from database.db_setup import DatabaseSetup as database
+from database.db_setup import DatabaseSetup as Database
 
 
-def startup() -> str | None:
+def startup() -> Database | None:
     """Set up logging, dependencies and the database before starting the application."""
     logger = setup_logging()
 
@@ -56,7 +56,7 @@ def install_dependencies(logger: Logger) -> bool:
         return False
 
 
-def setup_database(logger: Logger) -> str | None:
+def setup_database(logger: Logger) -> Database | None:
     """Create and validate the application's SQLite database."""
     BACKEND_DIR: Path = Path(__file__).resolve().parent
     DATABASE_DIR = BACKEND_DIR / "database"
@@ -66,12 +66,8 @@ def setup_database(logger: Logger) -> str | None:
 
     logger.info("Setting up the database.")
 
-    if not DATABASE_PATH.exists():
-        db = database(str(DATABASE_PATH))
-        db_context = db.initialise_db(db.connect_db())
-        db_context.close()
-
-    db = database(str(DATABASE_PATH))
+    db = Database(str(DATABASE_PATH))
+    db.initialise_db()
     if not db.integrity_check():
         logger.error("Failed to initialise database. Please try again later.")
         Path.unlink(DATABASE_PATH)
@@ -79,5 +75,4 @@ def setup_database(logger: Logger) -> str | None:
         return None
 
     logger.info("Initialised the database succesfully!")
-
-    return str(DATABASE_PATH)
+    return db
