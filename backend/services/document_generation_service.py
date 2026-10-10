@@ -6,6 +6,10 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
 
+from services.image_utils import ImageUtils
+
+from PIL import Image
+
 
 class DocumentGeneration:
     """
@@ -49,13 +53,18 @@ class DocumentGeneration:
         for path in image_paths:
             image_path = Path(path)
             if image_path.is_file():
-                valid_images.append(path)
+                try:
+                    with Image.open(image_path) as img:
+                        img.verify()
+                        valid_images.append(path)
+                except (IOError, SyntaxError):
+                    self.logger.warning("Image file not found, skipping: %s", image_path)
             else:
                 self.logger.warning("Image file not found, skipping: %s", image_path)
 
         return valid_images
 
-    def generate_pdf(self, image_paths: list[str]) -> None:
+    def generate_pdf(self, image_paths: list[str], set_name: str) -> None:
         """
         Generate a PDF document containing card images arranged in a grid layout.
 
@@ -159,7 +168,7 @@ class DocumentGeneration:
             Path(temp_path).rename(final_path)
 
             self.logger.info("PDF generated successfully: %s", final_path)
-
+            ImageUtils().remove_set_images(set_name)
         except OSError:
             # Clean up temp file on failure
             try:

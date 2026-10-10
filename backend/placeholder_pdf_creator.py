@@ -43,4 +43,4 @@ class SetToPDF:
         if not image_paths:
             return
 
-        self.document_generation_service.generate_pdf(image_paths)
+        self.document_generation_service.generate_pdf(image_paths, current_set.name)

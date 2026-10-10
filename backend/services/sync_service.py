@@ -106,6 +106,9 @@ class SyncService:
                 return False
             return True
 
+        if api_response["data"].get("printing") is None:
+            api_response["data"]["printing"] = "Normal"
+
         for variant in api_response["data"]:
             current_variant = variant["printing"]
 

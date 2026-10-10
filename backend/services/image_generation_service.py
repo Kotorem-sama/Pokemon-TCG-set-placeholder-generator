@@ -1,6 +1,5 @@
 from io import BytesIO
 from logging import getLogger
-from os.path import isfile
 from pathlib import Path
 
 from database.db_operations import Card, Card_operations, Set_operations
@@ -81,9 +80,6 @@ class ImageGeneration:
             self.logger.info(f"Set directory ensured: {SET_DIR}")
 
             image_directory = SET_DIR / f"{file_name}{extension}"
-            if isfile(image_directory):
-                self.logger.info(f"Image already exists, skipping: {image_directory}")
-                return
 
             image.save(image_directory)
             self.logger.info(f"Image saved successfully: {image_directory}")
@@ -100,7 +96,7 @@ class ImageGeneration:
         current_card: Card,
         set_name: str,
         variant: str,
-    ):
+    ) -> bool:
         """
         Process a card image by converting it to grayscale and combining with template overlay.
 
@@ -126,10 +122,12 @@ class ImageGeneration:
                     set_name,
                     grayscale_image,
                 )
+                return True
         except Exception as e:
             self.logger.error(
                 f"Error processing image for card '{current_card.name}': {e}"
             )
+            return False
 
     def get_template(self, variant: str):
         """
@@ -188,12 +186,7 @@ class ImageGeneration:
             template_path = (
                 Path(__file__).resolve().parent.parent / "data" / "templates"
             )
-            rarities = [
-                        "Uncommon",
-                        "Common",
-                        "Rare",
-                        "Promo"
-                    ]
+            rarities = ["Uncommon", "Common", "Rare", "Promo"]
 
             template_file = template_path / f"{variant}.png"
             base_image = im.convert("RGBA")
@@ -236,7 +229,7 @@ class ImageGeneration:
         set_name: str,
         width: int = 744,
         height: int = 1039,
-    ):
+    ) -> bool:
         """
         Generate a placeholder card image with card name and variant text.
 
@@ -347,12 +340,14 @@ class ImageGeneration:
                 image,
             )
             self.logger.info(f"Placeholder saved for {current_card.name} ({variant})")
+            return True
         except Exception as e:
             self.logger.error(
                 f"Error generating placeholder for card '{current_card.name}': {e}"
             )
+            return False
 
-    def generate_images_for_card(self, current_card: Card, set_name: str):
+    def generate_images_for_card(self, current_card: Card, set_name: str) -> bool:
         """
         Generate images for all variants of a card.
 
@@ -374,15 +369,19 @@ class ImageGeneration:
                     f"No image found for {current_card.name}, generating placeholders"
                 )
                 for variant in card_variants:
-                    self.generate_placeholder(current_card, variant, set_name, 287, 400)
+                    if not self.generate_placeholder(current_card, variant, set_name, 287, 400):
+                        return False
             else:
                 self.logger.info(f"Processing actual image for {current_card.name}")
                 for variant in card_variants:
-                    self.image_processor(card_image, current_card, set_name, variant)
+                    if not self.image_processor(card_image, current_card, set_name, variant):
+                        return False
+            return True
         except Exception as e:
             self.logger.error(
                 f"Error generating images for card '{current_card.name}': {e}"
             )
+            return False
 
     def generate_images_for_set(self, set_id: int) -> bool:
         """
@@ -408,7 +407,8 @@ class ImageGeneration:
             )
 
             for card in cards_in_set:
-                self.generate_images_for_card(card, current_set.name)
+                if not self.generate_images_for_card(card, current_set.name):
+                    return False
 
             self.logger.info(f"Completed image generation for set: {current_set.name}")
             return True
