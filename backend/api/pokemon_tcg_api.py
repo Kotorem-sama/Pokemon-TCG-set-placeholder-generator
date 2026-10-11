@@ -3,7 +3,7 @@ from logging import getLogger
 from re import findall
 from typing import Any
 
-from config import API_KEYS, BASE_URL, TIMEOUTS
+from core.config import API_KEYS, BASE_URL, TIMEOUTS
 from httpx import AsyncClient, HTTPStatusError, RequestError, Response
 
 

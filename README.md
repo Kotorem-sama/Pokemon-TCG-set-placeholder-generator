@@ -40,11 +40,12 @@ The current launcher targets the `ME: 30th Celebration` set. The set must alread
     ├── services/
     │   ├── sync_service.py           # Synchronization logic
     │   ├── image_generation_service.py
-    │   └── document_generation_service.py
-    ├── classes.py                   # Set and Card model classes
-    ├── config.py                    # Dotenv-based config loading
-    ├── initializer.py               # Dependency install + DB bootstrapping
-    ├── placeholder_pdf_creator.py   # Orchestrates sync, images, and PDF generation
+    │   ├── document_generation_service.py
+    │   └── set_to_pdf_service.py     # Orchestrates sync, images, and PDF generation
+    ├── models/                      # Set and Card model classes
+    ├── core/
+    │   ├── config.py                 # Dotenv-based config loading
+    │   └── startup.py                # Dependency install + DB bootstrapping
     ├── main.py                      # Entry point for running sync tasks
     ├── requirements.txt             # Python dependencies
     ├── .example.env                 # Example API-key configuration

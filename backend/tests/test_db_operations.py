@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from sqlite3 import Connection
 
-from classes import Card, Set
+from models import Card, Set
 from database.db_operations import Card_operations, Set_operations
 from database.db_setup import DatabaseSetup
 from pytest import fixture

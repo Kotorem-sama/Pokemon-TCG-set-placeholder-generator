@@ -2,7 +2,7 @@ from logging import getLogger
 from sqlite3 import Connection
 from sqlite3 import Error as db_error
 
-from classes import Card, Set
+from models import Card, Set
 
 
 class Set_operations:

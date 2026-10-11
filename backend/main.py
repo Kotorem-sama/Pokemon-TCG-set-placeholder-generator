@@ -3,8 +3,8 @@ from logging import getLogger
 from pathlib import Path
 from sys import exit
 
-from initializer import startup
-from placeholder_pdf_creator import SetToPDF
+from core.startup import startup
+from services.set_to_pdf_service import SetToPDF
 from pytest import main as testmain
 
 
