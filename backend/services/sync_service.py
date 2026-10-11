@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 from logging import getLogger
-from typing import Any
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from api.pokemon_tcg_api import PokemonTCGAPI
@@ -108,7 +108,12 @@ class SyncService:
 
         current_variant = ""
 
-        for variant in api_response["data"]:
+        variant_data = cast(
+            list[dict[str, object]],
+            api_response["data"],
+        )
+
+        for variant in variant_data:
             if not variant.get("printing"):
                 current_variant = "Normal"
             else:
@@ -156,7 +161,9 @@ class SyncService:
 
         cards_in_db = self.card_operations.get_cards_amount(db_set.id)
 
-        start_page = max(1, (cards_in_db - 2) // 100 + 1)
+        start_page = (
+            max(1, (cards_in_db - 2) // 100 + 1) if not within_sync_window else 1
+        )
         api_response = await self.pokemontcgapi.get_cards(db_set.id, start_page)
 
         if not api_response["success"]:
