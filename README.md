@@ -45,32 +45,26 @@ The set lookup is performed via a `LIKE` match, so the name does not need to be 
 ```text
 .
 ├── README.md
-├── .gitignore
-├── backend/
-│   ├── .example.env
-│   ├── api/
-│   │   └── pokemon_tcg_api.py
-│   ├── database/
-│   │   ├── db_operations.py
-│   │   ├── db_setup.py
-│   │   └── pokemon_cards.db
-│   ├── data/
-│   │   ├── generated/
-│   │   └── templates/
-│   ├── services/
-│   │   ├── document_generation_service.py
-│   │   ├── image_generation_service.py
-│   │   ├── image_utils.py
-│   │   ├── name_service.py
-│   │   ├── sync_service.py
-│   │   └── ...
-│   ├── tests/
-│   ├── classes.py
-│   ├── config.py
-│   ├── initializer.py
-│   ├── main.py
-│   ├── placeholder_pdf_creator.py
-│   └── requirements.txt
+└── backend/
+    ├── api/
+    │   └── pokemon_tcg_api.py       # API client for tcgapi.dev
+    ├── database/
+    │   ├── db_setup.py               # SQLite schema setup
+    │   ├── db_operations.py          # CRUD operations for sets/cards/images
+    │   └── pokemon_cards.db          # Created at runtime
+    ├── services/
+    │   ├── sync_service.py           # Synchronization logic
+    │   ├── image_generation_service.py
+    │   ├── document_generation_service.py
+    │   └── set_to_pdf_service.py     # Orchestrates sync, images, and PDF generation
+    ├── models/                      # Set and Card model classes
+    ├── core/
+    │   ├── config.py                 # Dotenv-based config loading
+    │   └── startup.py                # Dependency install + DB bootstrapping
+    ├── main.py                      # Entry point for running sync tasks
+    ├── requirements.txt             # Python dependencies
+    ├── .example.env                 # Example API-key configuration
+    └── tests/                       # Database operation tests
 ```
 
 ## Setup

@@ -31,7 +31,7 @@ def setup_logging() -> Logger:
 
 def install_dependencies(logger: Logger) -> bool:
     """Install the project's dependencies from requirements.txt."""
-    BACKEND_DIR: Path = Path(__file__).resolve().parent
+    BACKEND_DIR: Path = Path(__file__).resolve().parent.parent
     logger.info("Installing dependencies...")
 
     try:
@@ -58,7 +58,7 @@ def install_dependencies(logger: Logger) -> bool:
 
 def setup_database(logger: Logger) -> Database | None:
     """Create and validate the application's SQLite database."""
-    BACKEND_DIR: Path = Path(__file__).resolve().parent
+    BACKEND_DIR: Path = Path(__file__).resolve().parent.parent
     DATABASE_DIR = BACKEND_DIR / "database"
     DATABASE_PATH = DATABASE_DIR / "pokemon_cards.db"
 
