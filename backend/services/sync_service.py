@@ -63,7 +63,7 @@ class SyncService:
 
         if updated_set.id == 0 and updated_set.sync_complete == 9:
             return None
-        
+
         return updated_set
 
     async def sync_image(self, image_url: str, card_id: int) -> bool:
@@ -89,12 +89,7 @@ class SyncService:
         api_response = await self.pokemontcgapi.get_card_prices(card_id)
 
         variants: list[str] = []
-        rarities = [
-            "Uncommon",
-            "Common",
-            "Rare",
-            "Promo"
-        ]
+        rarities = ["Uncommon", "Common", "Rare", "Promo"]
 
         if not api_response["success"]:
             return False
@@ -106,11 +101,18 @@ class SyncService:
                 return False
             return True
 
-        if api_response["data"].get("printing") is None:
-            api_response["data"]["printing"] = "Normal"
+        data = api_response.get("data")
+        if not isinstance(data, list):
+            self.logger.warning("Invalid variant data for card '%s'", card_id)
+            return False
+
+        current_variant = ""
 
         for variant in api_response["data"]:
-            current_variant = variant["printing"]
+            if not variant.get("printing"):
+                current_variant = "Normal"
+            else:
+                current_variant = variant["printing"]
 
             if current_variant == "Foil":
                 current_variant = "Holofoil"
@@ -148,27 +150,31 @@ class SyncService:
 
         return bool(custom_attributes.get("cardTypeB"))
 
-    async def sync_cards_in_set(
-        self,
-        set_id: int,
-    ) -> bool:
+    async def sync_cards_in_set(self, db_set: Set, within_sync_window: bool) -> bool:
         """Synchronise the cards, images and variants belonging to a set."""
-        self.logger.info(f"Start synchronising the cards of set '{set_id}'.")
+        self.logger.info(f"Start synchronising the cards of set '{db_set.id}'.")
 
-        cards_in_db = self.card_operations.get_cards_amount(set_id)
+        cards_in_db = self.card_operations.get_cards_amount(db_set.id)
 
         start_page = max(1, (cards_in_db - 2) // 100 + 1)
-        api_response = await self.pokemontcgapi.get_cards(set_id, start_page)
+        api_response = await self.pokemontcgapi.get_cards(db_set.id, start_page)
 
         if not api_response["success"]:
             return False
+
+        if within_sync_window:
+            if not self.set_operations.delete_set(db_set.id):
+                return False
+
+            if not self.set_operations.add_set(db_set):
+                return False
 
         for card in api_response["data"]:
             if not self.is_card(card):
                 continue
 
             if self.card_operations.get_card_by_id(card["id"]) is None:
-                new_card = Card.from_api_to_Card(card, set_id)
+                new_card = Card.from_api_to_Card(card, db_set.id)
 
                 if new_card.id == 0 and new_card.set_id == 0:
                     return False
@@ -184,7 +190,7 @@ class SyncService:
                 if not await self.sync_card_variants(card["id"], card["rarity"]):
                     return False
 
-        self.logger.info(f"Finished synchronising cards of set '{set_id}'!")
+        self.logger.info(f"Finished synchronising cards of set '{db_set.id}'!")
         return True
 
     async def sync_set(self, set_id: int) -> Set | None:
@@ -200,8 +206,9 @@ class SyncService:
 
             if db_set is None:
                 return None
-            
-            self.set_operations.add_set(db_set)
+
+            if not self.set_operations.add_set(db_set):
+                return None
 
         if db_set.card_count is None:
             db_set = await self.sync_set_info(set_id)
@@ -212,7 +219,7 @@ class SyncService:
             if not (self.set_operations.update_set(db_set)):
                 return None
 
-        within_sync_window = True
+        within_sync_window = False
 
         if db_set.release_date is not None:
             release_date = date.fromisoformat(db_set.release_date) + timedelta(weeks=2)
@@ -220,22 +227,15 @@ class SyncService:
                 release_date > datetime.now(ZoneInfo("Europe/Amsterdam")).date()
             )
 
-        if within_sync_window:
-            if not self.set_operations.delete_set(set_id):
-                return None
-            
-            db_set.sync_complete = 0
-            if not self.set_operations.add_set(db_set):
-                return None
-
         # Recently released sets are refreshed to account for newly available card data.
         if db_set.sync_complete == 0 or within_sync_window:
-            if not await self.sync_cards_in_set(set_id):
+            if not await self.sync_cards_in_set(db_set, within_sync_window):
                 return None
 
-        db_set.sync_complete = 1
-        if not self.set_operations.update_set(db_set):
-            return None
+        if not within_sync_window:
+            db_set.sync_complete = 1
+            if not self.set_operations.update_set(db_set):
+                return None
 
         self.logger.info(f"Successfully added set '{set_id}'!")
         return db_set

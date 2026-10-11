@@ -17,7 +17,8 @@ async def main():
 
     await tests()
 
-    await SetToPDF(db.db_context).get_document("SV: Black Bolt")
+    await SetToPDF(db.db_context).get_document("Black Bolt")
+    db.db_context.close()
 
 
 async def tests():
@@ -32,7 +33,7 @@ async def tests():
 
     if test_result != 0:
         logger.error(f"Unit tests came back with an error: {test_result}")
-        exit()
+        exit(0)
 
     logger.info("Tests have successfully been conducted!")
 

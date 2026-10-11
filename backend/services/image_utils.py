@@ -60,7 +60,7 @@ class ImageUtils:
 
     def remove_set_images(self, set_name: str):
         set_name = sanitize_filename(set_name)
-        
+
         try:
             set_directory = (
                 Path(__file__).resolve().parent.parent / "data" / "generated" / set_name

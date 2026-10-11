@@ -25,7 +25,10 @@ class SetToPDF:
         self.logger = getLogger(__name__)
 
     async def get_document(self, set_name: str):
+        await self.sync_service.sync_sets()
+
         current_set = self.set_operations.get_set_by_name(set_name)
+
         if not current_set:
             self.logger.warning(
                 "The inputted set_name was not recognised. Please try again with a different name."
@@ -37,6 +40,7 @@ class SetToPDF:
             return
 
         if not self.image_generation_service.generate_images_for_set(current_set.id):
+            ImageUtils().remove_set_images(current_set.name)
             return
 
         image_paths = self.image_utils.get_images_in_set_folder(current_set.name)

@@ -2,13 +2,12 @@ from logging import getLogger
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+from PIL import Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
 
 from services.image_utils import ImageUtils
-
-from PIL import Image
 
 
 class DocumentGeneration:
@@ -57,8 +56,10 @@ class DocumentGeneration:
                     with Image.open(image_path) as img:
                         img.verify()
                         valid_images.append(path)
-                except (IOError, SyntaxError):
-                    self.logger.warning("Image file not found, skipping: %s", image_path)
+                except (OSError, SyntaxError):
+                    self.logger.warning(
+                        "Image file not found, skipping: %s", image_path
+                    )
             else:
                 self.logger.warning("Image file not found, skipping: %s", image_path)
 

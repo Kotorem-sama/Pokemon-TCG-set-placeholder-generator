@@ -261,15 +261,24 @@ class Card_operations:
 
     def get_cards_by_set(self, set_id: int) -> list[Card]:
         """Retrieve all cards belonging to a specific set."""
-        return self.__get_cards_by_query("WHERE set_id = :set_id", {"set_id": set_id})
+        return self.__get_cards_by_query(
+            "WHERE set_id = :set_id ORDER BY number ASC, name ASC", {"set_id": set_id}
+        )
 
     def get_cards_amount(self, set_id: int) -> int:
-        self.logger.info(f"Trying to get the amount of cards that are in set '{set_id}'.")
+        self.logger.info(
+            f"Trying to get the amount of cards that are in set '{set_id}'."
+        )
         cursor = self.db_context.cursor()
 
-        cursor.execute("SELECT COUNT(*) FROM cards WHERE set_id = (:set_id)", {"set_id": set_id})
+        cursor.execute(
+            "SELECT COUNT(*) FROM cards WHERE set_id = (:set_id)", {"set_id": set_id}
+        )
 
-        return cursor.fetchone()[0]
+        cards_amount = cursor.fetchone()[0]
+        cursor.close()
+
+        return cards_amount
 
     def get_cards_by_rarity(self, rarity: str) -> list[Card]:
         """Retrieve all cards with a specific rarity."""
@@ -385,9 +394,19 @@ class Card_operations:
         return True
 
     def get_variants(self, card_id: int) -> list[str]:
-        """Retrieve all variants belonging to a card."""
+        """Retrieve all variants belonging to a card in a predefined order."""
         return self.__get_variants_by_query(
-            "SELECT variant FROM card_variants WHERE card_id = :card_id",
+            """
+            SELECT variant
+            FROM card_variants
+            WHERE card_id = :card_id
+            ORDER BY CASE variant
+                WHEN 'Normal' THEN 1
+                WHEN 'Reverse Holofoil' THEN 2
+                WHEN 'Holofoil' THEN 3
+                ELSE 4
+            END, variant ASC
+            """,
             {"card_id": card_id},
         )
 

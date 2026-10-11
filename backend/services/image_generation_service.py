@@ -5,6 +5,7 @@ from pathlib import Path
 from database.db_operations import Card, Card_operations, Set_operations
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
+from services.image_utils import ImageUtils
 from services.name_service import sanitize_filename
 
 
@@ -40,8 +41,6 @@ class ImageGeneration:
                     return ".bmp"
                 case "image/tiff":
                     return ".tiff"
-                case "image/svg+xml":
-                    return ".svg"
                 case "image/x-icon":
                     return ".ico"
                 case "image/vnd.microsoft.icon":
@@ -53,9 +52,23 @@ class ImageGeneration:
             self.logger.error(f"Error retrieving extension from image tuple: {e}")
             return ".fail"
 
+    def get_file_prefix(self, set_name: str) -> str:
+        file_amount = str(len(ImageUtils().get_images_in_set_folder(set_name)))
+        match len(file_amount):
+            case 1:
+                return f"0000{file_amount}"
+            case 2:
+                return f"000{file_amount}"
+            case 3:
+                return f"00{file_amount}"
+            case 4:
+                return f"0{file_amount}"
+            case _:
+                return file_amount
+
     def save_image(
         self, extension: str, file_name: str, set_name: str, image: Image.Image
-    ):
+    ) -> bool:
         """
         Save an image to the generated data directory with directory structure based on set name.
 
@@ -72,7 +85,9 @@ class ImageGeneration:
         """
         try:
             set_name = sanitize_filename(set_name)
-            file_name = sanitize_filename(file_name)
+            file_name = sanitize_filename(
+                f"{self.get_file_prefix(set_name)} - {file_name}"
+            )
             SET_DIR: Path = (
                 Path(__file__).resolve().parent.parent / "data" / "generated" / set_name
             )
@@ -83,12 +98,15 @@ class ImageGeneration:
 
             image.save(image_directory)
             self.logger.info(f"Image saved successfully: {image_directory}")
+            return True
         except OSError as e:
             self.logger.error(
                 f"OS error while saving image '{file_name}' for set '{set_name}': {e}"
             )
+            return False
         except Exception as e:
             self.logger.error(f"Unexpected error while saving image: {e}")
+            return False
 
     def image_processor(
         self,
@@ -116,13 +134,12 @@ class ImageGeneration:
                 im = self.combine_with_template(im, variant, current_card.rarity)
 
                 grayscale_image = im.convert("L")
-                self.save_image(
+                return self.save_image(
                     extension,
                     f"{current_card.number} - {current_card.name} ({variant})",
                     set_name,
                     grayscale_image,
                 )
-                return True
         except Exception as e:
             self.logger.error(
                 f"Error processing image for card '{current_card.name}': {e}"
@@ -333,12 +350,13 @@ class ImageGeneration:
                 y += line_height + 8
 
             # Return PNG bytes instead of saving a file
-            self.save_image(
+            if not self.save_image(
                 ".png",
                 f"{current_card.number} - {current_card.name} ({variant})",
                 set_name,
                 image,
-            )
+            ):
+                return False
             self.logger.info(f"Placeholder saved for {current_card.name} ({variant})")
             return True
         except Exception as e:
@@ -369,12 +387,16 @@ class ImageGeneration:
                     f"No image found for {current_card.name}, generating placeholders"
                 )
                 for variant in card_variants:
-                    if not self.generate_placeholder(current_card, variant, set_name, 287, 400):
+                    if not self.generate_placeholder(
+                        current_card, variant, set_name, 287, 400
+                    ):
                         return False
             else:
                 self.logger.info(f"Processing actual image for {current_card.name}")
                 for variant in card_variants:
-                    if not self.image_processor(card_image, current_card, set_name, variant):
+                    if not self.image_processor(
+                        card_image, current_card, set_name, variant
+                    ):
                         return False
             return True
         except Exception as e:
