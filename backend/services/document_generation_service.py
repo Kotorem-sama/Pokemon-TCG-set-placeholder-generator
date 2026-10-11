@@ -177,6 +177,7 @@ class DocumentGeneration:
             except OSError:
                 self.logger.warning("Could not delete temp file: %s", temp_path)
             self.logger.exception("Failed to generate PDF")
+            ImageUtils().remove_set_images(set_name)
         except Exception:
             # Clean up temp file on any other error
             try:
@@ -184,3 +185,4 @@ class DocumentGeneration:
             except OSError:
                 self.logger.warning("Could not delete temp file: %s", temp_path)
             self.logger.exception("Unexpected error during PDF generation")
+            ImageUtils().remove_set_images(set_name)

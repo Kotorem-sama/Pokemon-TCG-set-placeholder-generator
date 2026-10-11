@@ -18,22 +18,27 @@ class Set_operations:
         """Retrieve a single set using a custom SQL query."""
         cursor = self.db_context.cursor()
 
-        cursor.execute("""SELECT * FROM sets WHERE """ + query, values)
-        set_row = cursor.fetchone()
-        cursor.close()
+        try:
+            cursor.execute("""SELECT * FROM sets WHERE """ + query, values)
+            set_row = cursor.fetchone()
 
-        if set_row is None:
+            if set_row is None:
+                return None
+
+            return Set(
+                set_row["id"],
+                set_row["name"],
+                set_row["slug"],
+                set_row["abbreviation"],
+                set_row["release_date"],
+                set_row["card_count"],
+                set_row["sync_complete"],
+            )
+        except:
+            self.logger.warning("Failed to get set from database.")
             return None
-
-        return Set(
-            set_row["id"],
-            set_row["name"],
-            set_row["slug"],
-            set_row["abbreviation"],
-            set_row["release_date"],
-            set_row["card_count"],
-            set_row["sync_complete"],
-        )
+        finally:
+            cursor.close()
 
     def __get_sets_from_query(
         self, query: str, values: dict[str, str | int | None]
@@ -41,27 +46,32 @@ class Set_operations:
         """Retrieve multiple sets using a custom SQL query."""
         cursor = self.db_context.cursor()
 
-        cursor.execute(
-            "SELECT * FROM sets " + query + " ORDER BY release_date DESC", values
-        )
-        tuple_list = cursor.fetchall()
-        cursor.close()
-        set_list: list[Set] = []
-
-        for tpl in tuple_list:
-            set_list.append(
-                Set(
-                    tpl["id"],
-                    tpl["name"],
-                    tpl["slug"],
-                    tpl["abbreviation"],
-                    tpl["release_date"],
-                    tpl["card_count"],
-                    tpl["sync_complete"],
-                )
+        try:
+            cursor.execute(
+                "SELECT * FROM sets " + query + " ORDER BY release_date DESC", values
             )
+            tuple_list = cursor.fetchall()
+            set_list: list[Set] = []
 
-        return set_list
+            for tpl in tuple_list:
+                set_list.append(
+                    Set(
+                        tpl["id"],
+                        tpl["name"],
+                        tpl["slug"],
+                        tpl["abbreviation"],
+                        tpl["release_date"],
+                        tpl["card_count"],
+                        tpl["sync_complete"],
+                    )
+                )
+
+            return set_list
+        except:
+            self.logger.warning("Failed to get sets from database.")
+            return []
+        finally:
+            cursor.close()
 
     def add_set(self, new_set: Set) -> bool:
         """Add a new set to the database."""
@@ -271,14 +281,17 @@ class Card_operations:
         )
         cursor = self.db_context.cursor()
 
-        cursor.execute(
-            "SELECT COUNT(*) FROM cards WHERE set_id = (:set_id)", {"set_id": set_id}
-        )
-
-        cards_amount = cursor.fetchone()[0]
-        cursor.close()
-
-        return cards_amount
+        try:
+            cursor.execute(
+                "SELECT COUNT(*) FROM cards WHERE set_id = (:set_id)",
+                {"set_id": set_id},
+            )
+            return cursor.fetchone()[0]
+        except:
+            self.logger.warning(f"Failed to get card amount from set '{set_id}'.")
+            return 0
+        finally:
+            cursor.close()
 
     def get_cards_by_rarity(self, rarity: str) -> list[Card]:
         """Retrieve all cards with a specific rarity."""

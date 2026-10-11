@@ -84,6 +84,9 @@ class PokemonTCGAPI:
             self.logger.info(
                 f"The call has succeeded with code: {response.status_code}"
             )
+
+            if response.json()["data"] is None:
+                return {"success": True, "data": [{"": ""}]}
             return {"success": True, "data": response.json()["data"]}
 
         except HTTPStatusError as error:
