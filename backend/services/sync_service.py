@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 from logging import getLogger
-from typing import Any, cast
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from api.pokemon_tcg_api import PokemonTCGAPI
@@ -91,7 +91,7 @@ class SyncService:
         variants: list[str] = []
         rarities = ["Uncommon", "Common", "Rare", "Promo"]
 
-        if not api_response["success"]:
+        if not isinstance(api_response, dict) or not api_response.get("success"):
             return False
 
         if rarity not in rarities:
@@ -106,22 +106,25 @@ class SyncService:
             self.logger.warning("Invalid variant data for card '%s'", card_id)
             return False
 
-        current_variant = ""
+        if not data:
+            data = [{"printing": "Normal"}]
 
-        variant_data = cast(
-            list[dict[str, object]],
-            api_response["data"],
-        )
+        normalized_variants: list[str] = []
+        for variant in data:
+            if not isinstance(variant, dict):
+                self.logger.warning("Invalid variant data for card '%s'", card_id)
+                return False
 
-        if not isinstance(data[0], dict):
-            self.logger.warning("Invalid variant data for card '%s'", card_id)
-            return False
-
-        for variant in variant_data:
-            if not variant.get("printing"):
+            current_variant = variant.get("printing")
+            if current_variant is None:
                 current_variant = "Normal"
-            else:
-                current_variant = variant["printing"]
+            elif not isinstance(current_variant, str):
+                self.logger.warning("Invalid card printing for card '%s'", card_id)
+                return False
+
+            current_variant = current_variant.strip()
+            if not current_variant:
+                current_variant = "Normal"
 
             if current_variant == "Foil":
                 current_variant = "Holofoil"
@@ -130,9 +133,10 @@ class SyncService:
                 continue
 
             variants.append(str(current_variant))
+            normalized_variants.append(current_variant)
 
-            if not self.card_operations.add_variant(card_id, str(current_variant)):
-                # Remove any variants already added if the synchronisation fails.
+        for current_variant in normalized_variants:
+            if not self.card_operations.add_variant(card_id, current_variant):
                 self.card_operations.delete_variants(card_id)
                 return False
 
