@@ -125,9 +125,9 @@ class SyncService:
             if current_variant in variants:
                 continue
 
-            variants.append(current_variant)
+            variants.append(str(current_variant))
 
-            if not self.card_operations.add_variant(card_id, current_variant):
+            if not self.card_operations.add_variant(card_id, str(current_variant)):
                 # Remove any variants already added if the synchronisation fails.
                 self.card_operations.delete_variants(card_id)
                 return False
