@@ -17,7 +17,7 @@ async def main():
 
     await tests()
 
-    await SetToPDF(db.db_context).get_document("White flare")
+    await SetToPDF(db.db_context).get_document("Destined rivals")
     db.db_context.close()
 
 
