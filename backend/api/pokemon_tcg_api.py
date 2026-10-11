@@ -81,12 +81,18 @@ class PokemonTCGAPI:
 
             response.raise_for_status()
 
+            payload = response.json()
+            if not isinstance(payload, dict) or "data" not in payload:
+                self.logger.warning("Failed to parse API response: unexpected JSON shape")
+                return {"success": False}
+
             self.logger.info(
                 f"The call has succeeded with code: {response.status_code}"
             )
 
-            if response.json()["data"] is None:
-                return {"success": True, "data": [{"": ""}]}
+            if payload["data"] is None:
+                return {"success": True, "data": {}}
+            
             return {"success": True, "data": response.json()["data"]}
 
         except HTTPStatusError as error:
@@ -97,7 +103,7 @@ class PokemonTCGAPI:
             self.logger.warning("API request failed: %s", error)
             return {"success": False}
 
-        except (KeyError, ValueError) as error:
+        except (KeyError, ValueError, TypeError) as error:
             self.logger.warning("Failed to parse API response: %s", error)
             return {"success": False}
 
