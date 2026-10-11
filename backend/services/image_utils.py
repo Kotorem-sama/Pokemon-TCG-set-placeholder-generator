@@ -4,7 +4,7 @@ from shutil import rmtree
 
 from natsort import natsorted
 
-from services.name_service import sanitize_filename
+from backend.services.name_service import sanitize_filename
 
 
 class ImageUtils:

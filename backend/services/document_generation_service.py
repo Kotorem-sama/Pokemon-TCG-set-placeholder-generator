@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
 
-from services.image_utils import ImageUtils
+from backend.services.image_utils import ImageUtils
 
 
 class DocumentGeneration:

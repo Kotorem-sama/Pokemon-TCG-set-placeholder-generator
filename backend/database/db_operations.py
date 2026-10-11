@@ -2,7 +2,7 @@ from logging import getLogger
 from sqlite3 import Connection
 from sqlite3 import Error as db_error
 
-from models import Card, Set
+from backend.models import Card, Set
 
 
 class Set_operations:
@@ -125,6 +125,23 @@ class Set_operations:
     def get_set_by_name(self, name: str) -> Set | None:
         """Retrieve sets matching a name."""
         return self.__get_set_from_query("name LIKE :name", {"name": f"%{name}%"})
+
+    def get_set_years(self) -> list[str]:
+        """Retreive all years of sets that are in the database"""
+        all_sets = self.get_all_sets()
+
+        years: list[str] = []
+
+        for sets in all_sets:
+            release_date = sets.release_date
+            if release_date is None:
+                continue
+
+            year = release_date.split("-")[0]
+            if year not in years:
+                years.append(year)
+
+        return years
 
     def update_set(self, updated_set: Set) -> bool:
         """Update an existing set in the database."""

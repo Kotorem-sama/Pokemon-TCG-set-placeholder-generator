@@ -4,7 +4,6 @@ from pathlib import Path
 from sys import exit
 
 from core.startup import startup
-from services.set_to_pdf_service import SetToPDF
 from pytest import main as testmain
 
 
@@ -17,7 +16,6 @@ async def main():
 
     await tests()
 
-    await SetToPDF(db.db_context).get_document("Destined rivals")
     db.db_context.close()
 
 
@@ -36,7 +34,3 @@ async def tests():
         exit(1)
 
     logger.info("Tests have successfully been conducted!")
-
-
-if __name__ == "__main__":
-    run(main())

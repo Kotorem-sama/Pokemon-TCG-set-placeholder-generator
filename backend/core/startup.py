@@ -3,7 +3,7 @@ from pathlib import Path
 from subprocess import CalledProcessError, run
 from sys import executable
 
-from database.db_setup import DatabaseSetup as Database
+from backend.database.db_setup import DatabaseSetup as Database
 
 
 def startup() -> Database | None:

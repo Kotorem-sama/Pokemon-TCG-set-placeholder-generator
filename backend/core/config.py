@@ -1,13 +1,14 @@
 from logging import getLogger
 from os import getenv
 from re import compile
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 logger = getLogger(__name__)
 
 """Load API configuration from the .env file."""
-if not load_dotenv():
+if not load_dotenv(Path(__file__).resolve().parent.parent / ".env"):
     logger.warning(
         "No '.env' file has been detected. "
         "Please use '.example.env', fill in an API key and rename the file to '.env'."

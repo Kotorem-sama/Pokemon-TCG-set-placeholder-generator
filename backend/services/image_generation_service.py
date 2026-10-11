@@ -2,11 +2,11 @@ from io import BytesIO
 from logging import getLogger
 from pathlib import Path
 
-from database.db_operations import Card, Card_operations, Set_operations
+from backend.database.db_operations import Card, Card_operations, Set_operations
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
-from services.image_utils import ImageUtils
-from services.name_service import sanitize_filename
+from backend.services.image_utils import ImageUtils
+from backend.services.name_service import sanitize_filename
 
 
 class ImageGeneration:

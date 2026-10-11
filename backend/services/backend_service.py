@@ -1,15 +1,15 @@
 from logging import getLogger
 from sqlite3 import Connection
 
-from api.pokemon_tcg_api import PokemonTCGAPI
-from database.db_operations import Card_operations, Set_operations
-from services.document_generation_service import DocumentGeneration
-from services.image_generation_service import ImageGeneration
-from services.image_utils import ImageUtils
-from services.sync_service import SyncService
+from backend.api.pokemon_tcg_api import PokemonTCGAPI
+from backend.database.db_operations import Set_operations, Card_operations
+from backend.services.document_generation_service import DocumentGeneration
+from backend.services.image_generation_service import ImageGeneration
+from backend.services.image_utils import ImageUtils
+from backend.services.sync_service import SyncService
 
 
-class SetToPDF:
+class Backend:
     def __init__(self, db_context: Connection) -> None:
         self.set_operations = Set_operations(db_context)
         self.card_operations = Card_operations(db_context)
@@ -23,6 +23,9 @@ class SetToPDF:
         self.document_generation_service = DocumentGeneration()
         self.image_utils = ImageUtils()
         self.logger = getLogger(__name__)
+
+    async def get_years(self):
+        return self.set_operations.get_set_years()
 
     async def get_document(self, set_name: str):
         set_sync = await self.sync_service.sync_sets()
