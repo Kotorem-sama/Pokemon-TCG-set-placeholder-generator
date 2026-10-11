@@ -2,6 +2,8 @@ from logging import getLogger
 from pathlib import Path
 from shutil import rmtree
 
+from natsort import natsorted
+
 from services.name_service import sanitize_filename
 
 
@@ -52,7 +54,7 @@ class ImageUtils:
 
             image_files.sort()
             self.logger.info(f"Found {len(image_files)} images in set '{set_name}'")
-            return image_files
+            return natsorted(image_files)
 
         except OSError as e:
             self.logger.error(f"Error retrieving images for set '{set_name}': {e}")

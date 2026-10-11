@@ -25,15 +25,21 @@ class SetToPDF:
         self.logger = getLogger(__name__)
 
     async def get_document(self, set_name: str):
-        await self.sync_service.sync_sets()
+        set_sync = await self.sync_service.sync_sets()
 
         current_set = self.set_operations.get_set_by_name(set_name)
 
         if not current_set:
-            self.logger.warning(
-                "The inputted set_name was not recognised. Please try again with a different name."
-            )
-            return
+            if set_sync:
+                self.logger.warning(
+                    "The inputted set name is not valid. Please try again with a different name."
+                )
+                return
+            else:
+                self.logger.warning(
+                    "The set was not found in the database, but the set synchronisation has failed. Please try again later."
+                )
+                return
 
         current_set = await self.sync_service.sync_set(current_set.id)
         if current_set is None:

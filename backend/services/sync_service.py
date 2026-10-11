@@ -113,6 +113,10 @@ class SyncService:
             api_response["data"],
         )
 
+        if not isinstance(data[0], dict):
+            self.logger.warning("Invalid variant data for card '%s'", card_id)
+            return False
+
         for variant in variant_data:
             if not variant.get("printing"):
                 current_variant = "Normal"

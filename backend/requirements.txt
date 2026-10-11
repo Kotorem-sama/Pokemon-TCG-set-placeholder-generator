@@ -6,3 +6,4 @@ reportlab
 tzdata
 python-dotenv
 pytest
+natsort

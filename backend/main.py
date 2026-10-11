@@ -17,7 +17,7 @@ async def main():
 
     await tests()
 
-    await SetToPDF(db.db_context).get_document("Black Bolt")
+    await SetToPDF(db.db_context).get_document("30th")
     db.db_context.close()
 
 
