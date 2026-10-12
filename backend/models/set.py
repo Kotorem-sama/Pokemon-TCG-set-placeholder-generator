@@ -67,4 +67,3 @@ class Set:
             "sync_complete": self.sync_complete,
         }
         return dictionary
-

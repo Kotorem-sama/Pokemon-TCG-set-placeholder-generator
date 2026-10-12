@@ -1,6 +1,7 @@
 from logging import getLogger
 from sqlite3 import Connection
 from sqlite3 import Error as db_error
+from typing import Any
 
 from backend.models import Card, Set
 
@@ -11,6 +12,29 @@ class Set_operations:
     def __init__(self, db_context: Connection) -> None:
         self.logger = getLogger(__name__)
         self.db_context = db_context
+
+    def __get_from_query(
+        self,
+        values: dict[str, str | int | None],
+        what_clause: str,
+        database: str,
+        where_clause: str = "1=1",
+        suffix: str = "",
+        fetch_all: bool = False,
+    ) -> Any:
+        """Retrieve data from the sets table using a custom SQL query."""
+        cursor = self.db_context.cursor()
+        try:
+            cursor.execute(
+                f"SELECT {what_clause} FROM {database} WHERE {where_clause} {suffix}",
+                values,
+            )
+            return cursor.fetchall() if fetch_all else cursor.fetchone()
+        except db_error:
+            self.logger.exception("Failed to get information from database.")
+            return None
+        finally:
+            cursor.close()
 
     def __get_set_from_query(
         self, query: str, values: dict[str, str | int | None]
@@ -34,8 +58,8 @@ class Set_operations:
                 set_row["card_count"],
                 set_row["sync_complete"],
             )
-        except:
-            self.logger.warning("Failed to get set from database.")
+        except db_error as error:
+            self.logger.warning(f"Failed to get set from database. Error: {error}")
             return None
         finally:
             cursor.close()
@@ -67,8 +91,8 @@ class Set_operations:
                 )
 
             return set_list
-        except:
-            self.logger.warning("Failed to get sets from database.")
+        except db_error as error:
+            self.logger.warning(f"Failed to get sets from database. Error: {error}")
             return []
         finally:
             cursor.close()
@@ -127,21 +151,33 @@ class Set_operations:
         return self.__get_set_from_query("name LIKE :name", {"name": f"%{name}%"})
 
     def get_set_years(self) -> list[str]:
-        """Retreive all years of sets that are in the database"""
-        all_sets = self.get_all_sets()
+        """Retrieve all years of sets that are in the database."""
+        years = self.__get_from_query(
+            {},
+            "DISTINCT substr(release_date, 1, 4)",
+            "setsrelease_date IS NOT NULL",
+            suffix="ORDER BY 1",
+            fetch_all=True,
+        )
+        return sorted(
+            filter(None, [year[0] for year in years] if years else []), reverse=True
+        )
 
-        years: list[str] = []
-
-        for sets in all_sets:
-            release_date = sets.release_date
-            if release_date is None:
-                continue
-
-            year = release_date.split("-")[0]
-            if year not in years:
-                years.append(year)
-
-        return years
+    def get_rarities_in_set(self, set_id: int) -> list[str]:
+        rarities = self.__get_from_query(
+            {"set_id": set_id},
+            "DISTINCT rarity",
+            "cards",
+            "set_id = :set_id AND rarity is NOT NULL",
+            suffix="""ORDER BY CASE rarity
+                        WHEN 'Common' THEN 1
+                        WHEN 'Uncommon' THEN 2
+                        WHEN 'Rare' THEN 3
+                        ELSE 4
+                    END, number ASC""",
+            fetch_all=True,
+        )
+        return [rarity[0] for rarity in rarities] if rarities else []
 
     def update_set(self, updated_set: Set) -> bool:
         """Update an existing set in the database."""
@@ -304,8 +340,8 @@ class Card_operations:
                 {"set_id": set_id},
             )
             return cursor.fetchone()[0]
-        except:
-            self.logger.warning(f"Failed to get card amount from set '{set_id}'.")
+        except db_error as error:
+            self.logger.warning(f"Failed to get card amount from set '{set_id}'. Error: {error}")
             return 0
         finally:
             cursor.close()

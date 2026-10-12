@@ -2,9 +2,9 @@ from io import BytesIO
 from logging import getLogger
 from pathlib import Path
 
-from backend.database.db_operations import Card, Card_operations, Set_operations
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
+from backend.database.db_operations import Card, Card_operations, Set_operations
 from backend.services.image_utils import ImageUtils
 from backend.services.name_service import sanitize_filename
 
@@ -298,6 +298,7 @@ class ImageGeneration:
                         font = ImageFont.truetype(font_path, max(16, width // 16))
                         break
                     except Exception:
+                        self.logger.warning("Unable to find standard font.")
                         continue
 
             if font is None:

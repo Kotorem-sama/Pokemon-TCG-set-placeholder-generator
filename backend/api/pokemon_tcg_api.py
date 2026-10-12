@@ -3,8 +3,9 @@ from logging import getLogger
 from re import findall
 from typing import Any
 
-from backend.core.config import API_KEYS, BASE_URL, TIMEOUTS
 from httpx import AsyncClient, HTTPStatusError, RequestError, Response
+
+from backend.core.config import API_KEYS, BASE_URL, TIMEOUTS
 
 
 class PokemonTCGAPI:
@@ -83,7 +84,9 @@ class PokemonTCGAPI:
 
             payload = response.json()
             if not isinstance(payload, dict) or "data" not in payload:
-                self.logger.warning("Failed to parse API response: unexpected JSON shape")
+                self.logger.warning(
+                    "Failed to parse API response: unexpected JSON shape"
+                )
                 return {"success": False}
 
             self.logger.info(
@@ -92,7 +95,7 @@ class PokemonTCGAPI:
 
             if payload["data"] is None:
                 return {"success": True, "data": {}}
-            
+
             return {"success": True, "data": response.json()["data"]}
 
         except HTTPStatusError as error:

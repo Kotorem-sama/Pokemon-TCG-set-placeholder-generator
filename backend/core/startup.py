@@ -3,17 +3,26 @@ from pathlib import Path
 from subprocess import CalledProcessError, run
 from sys import executable
 
+from pytest import main
+
 from backend.database.db_setup import DatabaseSetup as Database
 
 
-def startup() -> Database | None:
+def startup() -> Database:
     """Set up logging, dependencies and the database before starting the application."""
     logger = setup_logging()
 
-    if not install_dependencies(logger):
-        return None
+    tests()
 
-    return setup_database(logger)
+    if not install_dependencies(logger):
+        exit()
+
+    db = setup_database(logger)
+
+    if not db:
+        exit()
+
+    return db
 
 
 def setup_logging() -> Logger:
@@ -76,3 +85,20 @@ def setup_database(logger: Logger) -> Database | None:
 
     logger.info("Initialised the database succesfully!")
     return db
+
+
+def tests():
+    """Run the project's unit tests and stop the application on failure."""
+
+    logger = getLogger(__name__)
+    logger.info("Executing unit tests...")
+
+    BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+    test_result = main([str(BACKEND_DIR / "tests")])
+
+    if test_result != 0:
+        logger.error(f"Unit tests came back with an error: {test_result}")
+        exit(1)
+
+    logger.info("Tests have successfully been conducted!")

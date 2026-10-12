@@ -1,7 +1,7 @@
 from logging import getLogger
 from os import getenv
-from re import compile
 from pathlib import Path
+from re import compile
 
 from dotenv import load_dotenv
 

@@ -2,7 +2,7 @@ from logging import getLogger
 from sqlite3 import Connection
 
 from backend.api.pokemon_tcg_api import PokemonTCGAPI
-from backend.database.db_operations import Set_operations, Card_operations
+from backend.database.db_operations import Card_operations, Set_operations
 from backend.services.document_generation_service import DocumentGeneration
 from backend.services.image_generation_service import ImageGeneration
 from backend.services.image_utils import ImageUtils
@@ -24,8 +24,17 @@ class Backend:
         self.image_utils = ImageUtils()
         self.logger = getLogger(__name__)
 
-    async def get_years(self):
+    def get_years(self):
         return self.set_operations.get_set_years()
+
+    def get_sets_in_year(self, year: int):
+        return self.set_operations.get_sets_by_year(year)
+
+    def get_variants_in_set(self, set_id: int):
+        return self.card_operations.get_variant_types_in_set(set_id)
+
+    def get_rarities_in_set(self, set_id: int):
+        return self.set_operations.get_rarities_in_set(set_id)
 
     async def get_document(self, set_name: str):
         set_sync = await self.sync_service.sync_sets()
