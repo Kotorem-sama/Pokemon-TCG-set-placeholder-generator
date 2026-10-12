@@ -7,7 +7,7 @@ from backend.models import Card, Set
 
 class DatabaseOperations:
     def __init__(
-        self, table_name: str, context: Connection, columns: list[str] | tuple[str]
+        self, table_name: str, context: Connection, columns: list[str]
     ) -> None:
         if table_name not in ["sets", "cards", "card_variants", "card_images"]:
             raise ValueError(f"Unknown table: {table_name}")
@@ -223,9 +223,67 @@ class SetOperations(DatabaseOperations):
         )
         return [str(year["substr(release_date, 1, 4)"]) for year in years]
 
+
+class CardOperations(DatabaseOperations):
+    """Provides database operations for Pokémon TCG cards and their properties."""
+
+    def __init__(self, context: Connection) -> None:
+        super().__init__("cards", context, ["id", "set_id", "name", "number", "rarity"])
+
+    def cast_as_cards(
+        self, data: list[dict[str, str | int | bytes | None]]
+    ) -> list[Card]:
+        """Helper function that can cast database responses into type Card."""
+        cards: list[Card] = []
+
+        for db_set in data:
+            card_id = db_set.get("id")
+            set_id = db_set.get("set_id")
+            name = db_set.get("name")
+            number = db_set.get("number")
+            rarity = db_set.get("rarity")
+
+            if (
+                not isinstance(card_id, int)
+                or not isinstance(set_id, int)
+                or not isinstance(name, str)
+            ):
+                self.logger.warning(
+                    f"Cannot create a card from the giving data: {db_set}."
+                )
+                continue
+
+            cards.append(
+                Card(
+                    card_id,
+                    set_id,
+                    name,
+                    number if isinstance(number, str) else None,
+                    rarity if isinstance(rarity, str) else None
+                )
+            )
+        return cards
+
+    def get_all_cards(self) -> list[Card]:
+        """Retrieve all cards from the database."""
+        return self.cast_as_cards(self.get({}, "*", fetch_all=True))
+
+    def get_cards_by_set(self, set_id: int) -> list[Card]:
+        """Retrieve all cards belonging to a specific set."""
+        return self.cast_as_cards(self.get({"set_id": set_id}, "*", "set_id = :set_id", "ORDER BY number ASC, name ASC", True))
+
+    def get_cards_amount_in_set(self, set_id: int) -> int:
+        """Retrieve amount of cards that are in a set."""
+        card_amount = self.get({"set_id": set_id}, "COUNT(*)", "set_id = (:set_id)")[0]["COUNT(*)"]
+        return 0 if not card_amount or not isinstance(card_amount, int) else card_amount
+
+    def get_cards_by_id(self, card_id: int) -> Card | None:
+        """Retrieve a card using its ID."""
+        current_card = self.cast_as_cards(self.get({"id": card_id}, "*", "id = :id"))
+        return None if not current_card else current_card[0]
+
     def get_rarities_in_set(self, set_id: int) -> list[str]:
         """Retrieve all rarities that are in a set."""
-        self.table_name = "cards"
         rarities = self.get(
             {"set_id": set_id},
             "rarity",
@@ -239,7 +297,6 @@ class SetOperations(DatabaseOperations):
             END, MIN(CAST(number AS INTEGER))""",
             True,
         )
-        self.table_name = "sets"
         return [str(rarity["rarity"]) for rarity in rarities]
 
 
@@ -249,172 +306,6 @@ class Card_operations:
     def __init__(self, db_context: Connection) -> None:
         self.logger = getLogger(__name__)
         self.db_context = db_context
-
-    def __get_card_by_query(
-        self, query: str, values: dict[str, str | int | None]
-    ) -> Card | None:
-        """Retrieve a single card using a custom SQL query."""
-        cursor = self.db_context.cursor()
-
-        cursor.execute(f"""SELECT * FROM cards WHERE {query}""", values)
-        card_row = cursor.fetchone()
-        cursor.close()
-
-        if card_row is None:
-            return None
-
-        return Card(
-            card_row["id"],
-            card_row["set_id"],
-            card_row["name"],
-            card_row["number"],
-            card_row["rarity"],
-        )
-
-    def __get_cards_by_query(
-        self, query: str, values: dict[str, str | int | None]
-    ) -> list[Card]:
-        """Retrieve multiple cards using a custom SQL query."""
-        cursor = self.db_context.cursor()
-
-        cursor.execute("""SELECT * FROM cards """ + query, values)
-        tuple_list = cursor.fetchall()
-        cursor.close()
-        card_list: list[Card] = []
-
-        for tpl in tuple_list:
-            card_list.append(
-                Card(
-                    tpl["id"], tpl["set_id"], tpl["name"], tpl["number"], tpl["rarity"]
-                )
-            )
-
-        return card_list
-
-    def add_card(self, new_card: Card) -> bool:
-        """Add a new card to the database."""
-
-        self.logger.info(f"Adding card '{new_card}' to the database.")
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                """INSERT INTO cards 
-            (id, set_id, name, number, rarity)            
-            VALUES(:id, :set_id, :name, :number, :rarity)
-            """,
-                new_card.get_dict(),
-            )
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to insert card '{new_card}' into the database: {error}."
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(f"Successfully added card '{new_card}' to the database!")
-        return True
-
-    def get_all_cards(self) -> list[Card]:
-        """Retrieve all cards from the database."""
-        return self.__get_cards_by_query("", {})
-
-    def get_cards_by_set(self, set_id: int) -> list[Card]:
-        """Retrieve all cards belonging to a specific set."""
-        return self.__get_cards_by_query(
-            "WHERE set_id = :set_id ORDER BY number ASC, name ASC", {"set_id": set_id}
-        )
-
-    def get_cards_amount(self, set_id: int) -> int:
-        self.logger.info(
-            f"Trying to get the amount of cards that are in set '{set_id}'."
-        )
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                "SELECT COUNT(*) FROM cards WHERE set_id = (:set_id)",
-                {"set_id": set_id},
-            )
-            return cursor.fetchone()[0]
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to get card amount from set '{set_id}'. Error: {error}"
-            )
-            return 0
-        finally:
-            cursor.close()
-
-    def get_cards_by_rarity(self, rarity: str) -> list[Card]:
-        """Retrieve all cards with a specific rarity."""
-        return self.__get_cards_by_query("WHERE rarity = :rarity", {"rarity": rarity})
-
-    def get_card_by_id(self, id: int) -> Card | None:
-        """Retrieve a card using its ID."""
-        return self.__get_card_by_query("id = :id", {"id": id})
-
-    def update_card(self, updated_card: Card) -> bool:
-        """Update an existing card in the database."""
-
-        self.logger.info(f"Updating {updated_card} in the database.")
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                """
-                UPDATE cards SET
-                    set_id = :set_id,
-                    name = :name,
-                    number = :number,
-                    rarity = :rarity
-                WHERE id = :id""",
-                {
-                    "id": updated_card.id,
-                    "set_id": updated_card.set_id,
-                    "name": updated_card.name,
-                    "number": updated_card.number,
-                    "rarity": updated_card.rarity,
-                },
-            )
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to update card '{updated_card}' in the database: {error}."
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(f"Successfully update card '{updated_card}' in the database!")
-        return True
-
-    def delete_card(self, card_id: int) -> bool:
-        """Delete a card from the database."""
-
-        self.logger.info(f"Deleting card '{card_id}' from the database.")
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute("""DELETE FROM cards WHERE id=(:id)""", {"id": card_id})
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to delete card '{card_id}' from the database: {error}."
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(f"Successfully deleted card '{card_id}' from the database!")
-        return True
 
     # Card variant operations starts here
     def __get_variants_by_query(
@@ -606,20 +497,4 @@ class Card_operations:
         self.logger.info(
             f"Successfully deleted image of card '{card_id}' from the database"
         )
-        return True
-
-    def delete_card_and_properties(self, card_id: int) -> bool:
-        """Delete a card and all associated images and variants."""
-        if self.get_image(card_id) is not None:
-            if not self.delete_image(card_id):
-                return False
-
-        if self.get_variants(card_id):
-            if not self.delete_variants(card_id):
-                return False
-
-        if self.get_card_by_id(card_id) is not None:
-            if not self.delete_card(card_id):
-                return False
-
         return True
