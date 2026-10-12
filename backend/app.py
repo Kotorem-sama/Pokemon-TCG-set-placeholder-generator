@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from backend.core.startup import startup
+from backend.core.startup import get_database, startup
 from backend.services.backend_service import Backend
 
 app = FastAPI(
@@ -11,6 +11,7 @@ app = FastAPI(
     description="Generate printable Pokémon TCG set lists.",
     version="1.0.0",
 )
+startup()
 
 
 @app.get("/favicon.ico")
@@ -32,7 +33,7 @@ def health_check():
 
 @app.get("/sets/years")
 async def get_years():
-    db = startup()
+    db = get_database()
     backend_service = Backend(db.db_context)
 
     years = backend_service.get_years()
@@ -43,7 +44,7 @@ async def get_years():
 
 @app.get("/sets/{year}")
 def get_sets_by_year(year: int):
-    db = startup()
+    db = get_database()
     backend_service = Backend(db.db_context)
 
     sets_in_year = backend_service.get_sets_in_year(year)
@@ -54,7 +55,7 @@ def get_sets_by_year(year: int):
 
 @app.get("/sets/{set_id}/variants")
 def get_variants_in_set(set_id: int):
-    db = startup()
+    db = get_database()
     backend_service = Backend(db.db_context)
 
     set_variants = backend_service.get_variants_in_set(set_id)
@@ -65,7 +66,7 @@ def get_variants_in_set(set_id: int):
 
 @app.get("/sets/{set_id}/rarities")
 def get_rarities_in_set(set_id: int):
-    db = startup()
+    db = get_database()
     backend_service = Backend(db.db_context)
 
     set_rarities = backend_service.get_rarities_in_set(set_id)

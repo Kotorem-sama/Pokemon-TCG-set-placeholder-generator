@@ -4,14 +4,14 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
-from backend.database.db_operations import Card, Card_operations, Set_operations
+from backend.database.db_operations import Card, Card_operations, SetOperations
 from backend.services.image_utils import ImageUtils
 from backend.services.name_service import sanitize_filename
 
 
 class ImageGeneration:
     def __init__(
-        self, card_operations: Card_operations, set_operations: Set_operations
+        self, card_operations: Card_operations, set_operations: SetOperations
     ) -> None:
         self.logger = getLogger(__name__)
         self.card_operations = card_operations

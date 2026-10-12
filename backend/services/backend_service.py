@@ -2,7 +2,7 @@ from logging import getLogger
 from sqlite3 import Connection
 
 from backend.api.pokemon_tcg_api import PokemonTCGAPI
-from backend.database.db_operations import Card_operations, Set_operations
+from backend.database.db_operations import Card_operations, SetOperations
 from backend.services.document_generation_service import DocumentGeneration
 from backend.services.image_generation_service import ImageGeneration
 from backend.services.image_utils import ImageUtils
@@ -11,7 +11,7 @@ from backend.services.sync_service import SyncService
 
 class Backend:
     def __init__(self, db_context: Connection) -> None:
-        self.set_operations = Set_operations(db_context)
+        self.set_operations = SetOperations(db_context)
         self.card_operations = Card_operations(db_context)
         self.PokemonTCGAPI = PokemonTCGAPI()
         self.sync_service = SyncService(

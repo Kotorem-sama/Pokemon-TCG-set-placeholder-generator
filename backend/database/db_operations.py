@@ -1,245 +1,246 @@
 from logging import getLogger
-from sqlite3 import Connection
+from sqlite3 import Connection, Row
 from sqlite3 import Error as db_error
-from typing import Any
 
 from backend.models import Card, Set
 
 
-class Set_operations:
-    """Provides database operations for Pokémon TCG sets."""
+class DatabaseOperations:
+    def __init__(
+        self, table_name: str, context: Connection, columns: list[str] | tuple[str]
+    ) -> None:
+        if table_name not in ["sets", "cards", "card_variants", "card_images"]:
+            raise ValueError(f"Unknown table: {table_name}")
 
-    def __init__(self, db_context: Connection) -> None:
         self.logger = getLogger(__name__)
-        self.db_context = db_context
+        self.table_name = table_name
+        self.context = context
+        self.columns: dict[str, str] = {c: f":{c}" for c in columns}
 
-    def __get_from_query(
+    def get(
         self,
-        values: dict[str, str | int | None],
+        values: dict[str, str | int],
         what_clause: str,
-        database: str,
         where_clause: str = "1=1",
         suffix: str = "",
         fetch_all: bool = False,
-    ) -> Any:
-        """Retrieve data from the sets table using a custom SQL query."""
-        cursor = self.db_context.cursor()
+    ) -> list[dict[str, str | int | bytes | None]]:
+        """Gets data from table_name using a custom SQL query."""
+        cursor = self.context.cursor()
         try:
             cursor.execute(
-                f"SELECT {what_clause} FROM {database} WHERE {where_clause} {suffix}",
+                f"SELECT {what_clause} FROM {self.table_name} WHERE {where_clause} {suffix}",
                 values,
             )
-            return cursor.fetchall() if fetch_all else cursor.fetchone()
+            rows: list[Row] = (
+                cursor.fetchall()
+                if fetch_all
+                else [row for row in [cursor.fetchone()] if row]
+            )
+            return [dict(row) for row in rows]
         except db_error:
             self.logger.exception("Failed to get information from database.")
-            return None
-        finally:
-            cursor.close()
-
-    def __get_set_from_query(
-        self, query: str, values: dict[str, str | int | None]
-    ) -> Set | None:
-        """Retrieve a single set using a custom SQL query."""
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute("""SELECT * FROM sets WHERE """ + query, values)
-            set_row = cursor.fetchone()
-
-            if set_row is None:
-                return None
-
-            return Set(
-                set_row["id"],
-                set_row["name"],
-                set_row["slug"],
-                set_row["abbreviation"],
-                set_row["release_date"],
-                set_row["card_count"],
-                set_row["sync_complete"],
-            )
-        except db_error as error:
-            self.logger.warning(f"Failed to get set from database. Error: {error}")
-            return None
-        finally:
-            cursor.close()
-
-    def __get_sets_from_query(
-        self, query: str, values: dict[str, str | int | None]
-    ) -> list[Set]:
-        """Retrieve multiple sets using a custom SQL query."""
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                "SELECT * FROM sets " + query + " ORDER BY release_date DESC", values
-            )
-            tuple_list = cursor.fetchall()
-            set_list: list[Set] = []
-
-            for tpl in tuple_list:
-                set_list.append(
-                    Set(
-                        tpl["id"],
-                        tpl["name"],
-                        tpl["slug"],
-                        tpl["abbreviation"],
-                        tpl["release_date"],
-                        tpl["card_count"],
-                        tpl["sync_complete"],
-                    )
-                )
-
-            return set_list
-        except db_error as error:
-            self.logger.warning(f"Failed to get sets from database. Error: {error}")
             return []
         finally:
             cursor.close()
 
-    def add_set(self, new_set: Set) -> bool:
-        """Add a new set to the database."""
-
-        self.logger.info(f"Adding set {new_set} to the database.")
-
-        cursor = self.db_context.cursor()
+    def add(self, new_entry: dict[str, str | int | None]) -> bool:
+        """Adds data to the set table."""
+        self.logger.info(f"Adding '{new_entry}' to the table '{self.table_name}'.")
+        cursor = self.context.cursor()
 
         try:
+            cols = ", ".join(self.columns)
+            params = ", ".join(self.columns.values())
             cursor.execute(
-                """INSERT INTO sets 
-            (id, name, slug, abbreviation, release_date, card_count, sync_complete)            
-            VALUES(:id, :name, :slug, :abbreviation, :release_date, :card_count, :sync_complete)""",
-                new_set.get_dict(),
+                f"""INSERT INTO {self.table_name} ({cols})            
+            VALUES({params})""",
+                new_entry,
             )
 
-            self.db_context.commit()
+            self.context.commit()
+            self.logger.info(
+                f"Successfully added '{new_entry}' to the table '{self.table_name}'!"
+            )
+            return True
 
         except db_error as error:
             self.logger.warning(
-                f"Failed to insert set '{new_set}' into the database: {error}."
+                f"Failed to insert '{new_entry}' into the table '{self.table_name}': {error}."
             )
             return False
 
         finally:
             cursor.close()
 
-        self.logger.info(f"Successfully added set '{new_set}' to the database!")
+    def update(self, update_entry: dict[str, str | int | None]) -> bool:
+        self.logger.info(f"Updating {update_entry} to the table {self.table_name}.")
+        cursor = self.context.cursor()
+        try:
+            assignments = ", ".join(
+                f"{col} = {param}" for col, param in self.columns.items() if col != "id"
+            )
+            cursor.execute(
+                f"UPDATE {self.table_name} SET {assignments} WHERE id = :id",
+                update_entry,
+            )
+            self.context.commit()
+            self.logger.info(
+                f"Successfully updated '{update_entry}' to table '{self.table_name}'!"
+            )
+            return cursor.rowcount > 0
+        except db_error as error:
+            self.logger.warning(
+                f"Failed to update '{update_entry}' in table '{self.table_name}': {error}."
+            )
+            return False
+
+        finally:
+            cursor.close()
+
+    def delete(self, column_name: str, values: dict[str, str | int]) -> bool:
+        """Delete inserted id from the class' table."""
+        self.logger.info(
+            f"Attempting to delete '{column_name}' from table '{self.table_name}'."
+        )
+
+        if column_name not in self.columns:
+            self.logger.warning(
+                f"Unknown column '{column_name}' for table '{self.table_name}'."
+            )
+            return False
+
+        cursor = self.context.cursor()
+
+        try:
+            cursor.execute(
+                f"""DELETE FROM {self.table_name} WHERE {column_name}=(:{column_name})""",
+                values,
+            )
+            self.context.commit()
+        except db_error as error:
+            self.logger.warning(
+                f"Failed to delete '{column_name}' from table '{self.table_name}': {error}."
+            )
+            return False
+        finally:
+            cursor.close()
+
+        self.logger.info(
+            f"Successfully deleted '{column_name}' from table '{self.table_name}'!"
+        )
         return True
+
+
+class SetOperations(DatabaseOperations):
+    """Provides database operations for Pokémon TCG sets."""
+
+    def __init__(self, context: Connection) -> None:
+        super().__init__(
+            "sets",
+            context,
+            [
+                "id",
+                "name",
+                "slug",
+                "abbreviation",
+                "release_date",
+                "card_count",
+                "sync_complete",
+            ],
+        )
+
+    def cast_as_sets(
+        self, data: list[dict[str, str | int | bytes | None]]
+    ) -> list[Set]:
+        sets: list[Set] = []
+
+        for db_set in data:
+            set_id = db_set.get("id")
+            name = db_set.get("name")
+            slug = db_set.get("slug")
+            abbreviation = db_set.get("abbreviation")
+            release_date = db_set.get("release_date")
+            card_count = db_set.get("card_count")
+            sync_complete = db_set.get("sync_complete")
+
+            if (
+                not isinstance(set_id, int)
+                or not isinstance(name, str)
+                or not isinstance(slug, str)
+                or not isinstance(sync_complete, int)
+            ):
+                self.logger.warning(
+                    f"Cannot create a set from the giving data: {db_set}."
+                )
+                continue
+
+            sets.append(
+                Set(
+                    set_id,
+                    name,
+                    slug,
+                    abbreviation if isinstance(abbreviation, str) else None,
+                    release_date if isinstance(release_date, str) else None,
+                    card_count if isinstance(card_count, int) else None,
+                    sync_complete,
+                )
+            )
+        return sets
 
     def get_sets_by_year(self, year: int) -> list[Set]:
         """Retrieve all sets released in a specific year."""
-        return self.__get_sets_from_query(
-            """WHERE 
-            strftime('%Y', release_date) = :year""",
-            {"year": str(year)},
+        return self.cast_as_sets(
+            self.get(
+                {"year": str(year)}, "*", "substr(release_date, 1, 4) = :year", "", True
+            )
         )
 
     def get_all_sets(self) -> list[Set]:
         """Retrieve all sets from the database."""
-        return self.__get_sets_from_query("", {})
+        return self.cast_as_sets(self.get({}, "*", fetch_all=True))
 
-    def get_set_by_id(self, id: int) -> Set | None:
-        """Retrieve a set using its ID."""
-        return self.__get_set_from_query("id = :id", {"id": id})
+    def get_set_by_id(self, set_id: int) -> Set | None:
+        """Retrieve set by it's id."""
+        current_set = self.cast_as_sets(self.get({"id": set_id}, "*", "id = :id"))
+        return None if not current_set else current_set[0]
 
-    def get_set_by_slug(self, slug: str) -> Set | None:
-        """Retrieve a set using its slug."""
-        return self.__get_set_from_query("slug = :slug", {"slug": slug})
-
-    def get_set_by_name(self, name: str) -> Set | None:
+    def get_set_by_name(self, set_name: str) -> Set | None:
         """Retrieve sets matching a name."""
-        return self.__get_set_from_query("name LIKE :name", {"name": f"%{name}%"})
+        current_set = self.cast_as_sets(
+            self.get({"name": set_name}, "*", "name = :name")
+        )
+        return None if not current_set else current_set[0]
 
     def get_set_years(self) -> list[str]:
-        """Retrieve all years of sets that are in the database."""
-        years = self.__get_from_query(
+        """Retrieve all years of sets that are in the database. Returns a list of strings."""
+        years = self.get(
             {},
             "DISTINCT substr(release_date, 1, 4)",
-            "setsrelease_date IS NOT NULL",
-            suffix="ORDER BY 1",
-            fetch_all=True,
+            "release_date IS NOT NULL AND release_date != ''",
+            "ORDER BY substr(release_date, 1, 4) DESC",
+            True,
         )
-        return sorted(
-            filter(None, [year[0] for year in years] if years else []), reverse=True
-        )
+        return [str(year["substr(release_date, 1, 4)"]) for year in years]
 
     def get_rarities_in_set(self, set_id: int) -> list[str]:
-        rarities = self.__get_from_query(
+        """Retrieve all rarities that are in a set."""
+        self.table_name = "cards"
+        rarities = self.get(
             {"set_id": set_id},
-            "DISTINCT rarity",
-            "cards",
-            "set_id = :set_id AND rarity is NOT NULL",
-            suffix="""ORDER BY CASE rarity
-                        WHEN 'Common' THEN 1
-                        WHEN 'Uncommon' THEN 2
-                        WHEN 'Rare' THEN 3
-                        ELSE 4
-                    END, number ASC""",
-            fetch_all=True,
+            "rarity",
+            "set_id = :set_id AND rarity IS NOT NULL",
+            """GROUP BY rarity
+            ORDER BY CASE rarity
+                WHEN 'Common' THEN 1
+                WHEN 'Uncommon' THEN 2
+                WHEN 'Rare' THEN 3
+                ELSE 4
+            END, MIN(CAST(number AS INTEGER))""",
+            True,
         )
-        return [rarity[0] for rarity in rarities] if rarities else []
-
-    def update_set(self, updated_set: Set) -> bool:
-        """Update an existing set in the database."""
-
-        self.logger.info(f"Updating set {updated_set} to the database.")
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                """
-                UPDATE sets SET
-                    name = :name,
-                    slug = :slug,
-                    abbreviation = :abbreviation,
-                    release_date = :release_date,
-                    card_count = :card_count,
-                    sync_complete = :sync_complete
-                WHERE id = :id""",
-                {
-                    "id": updated_set.id,
-                    "name": updated_set.name,
-                    "slug": updated_set.slug,
-                    "abbreviation": updated_set.abbreviation,
-                    "release_date": updated_set.release_date,
-                    "card_count": updated_set.card_count,
-                    "sync_complete": updated_set.sync_complete,
-                },
-            )
-
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to update set '{updated_set}' in the database: {error}."
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(f"Successfully updated set '{updated_set}' in the database.")
-        return True
-
-    def delete_set(self, set_id: int) -> bool:
-        """Delete a set from the database."""
-
-        self.logger.info(f"Attempting to delete set '{set_id}' from the database.")
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute("""DELETE FROM sets WHERE id=(:id)""", {"id": set_id})
-            self.db_context.commit()
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to delete set '{set_id}' from the database: {error}."
-            )
-            return False
-        finally:
-            cursor.close()
-
-        self.logger.info(f"Successfully deleted the set '{set_id}' from the database!")
-        return True
+        self.table_name = "sets"
+        return [str(rarity["rarity"]) for rarity in rarities]
 
 
 class Card_operations:
@@ -341,7 +342,9 @@ class Card_operations:
             )
             return cursor.fetchone()[0]
         except db_error as error:
-            self.logger.warning(f"Failed to get card amount from set '{set_id}'. Error: {error}")
+            self.logger.warning(
+                f"Failed to get card amount from set '{set_id}'. Error: {error}"
+            )
             return 0
         finally:
             cursor.close()

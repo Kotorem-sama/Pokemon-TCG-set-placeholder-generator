@@ -2,27 +2,24 @@ from logging import WARNING, FileHandler, Logger, StreamHandler, basicConfig, ge
 from pathlib import Path
 from subprocess import CalledProcessError, run
 from sys import executable
+from sys import exit as exit_program
 
 from pytest import main
 
 from backend.database.db_setup import DatabaseSetup as Database
 
 
-def startup() -> Database:
+def startup():
     """Set up logging, dependencies and the database before starting the application."""
     logger = setup_logging()
 
     tests()
 
     if not install_dependencies(logger):
-        exit()
+        exit_program()
 
-    db = setup_database(logger)
-
-    if not db:
-        exit()
-
-    return db
+    if not setup_database(logger):
+        exit_program()
 
 
 def setup_logging() -> Logger:
@@ -85,6 +82,13 @@ def setup_database(logger: Logger) -> Database | None:
 
     logger.info("Initialised the database succesfully!")
     return db
+
+
+def get_database() -> Database:
+    DATABASE_PATH = (
+        Path(__file__).resolve().parent.parent / "database" / "pokemon_cards.db"
+    )
+    return Database(str(DATABASE_PATH))
 
 
 def tests():

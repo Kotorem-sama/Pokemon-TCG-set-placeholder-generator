@@ -55,15 +55,15 @@ class Set:
         """Use the readable string representation when displaying the object."""
         return self.__str__()
 
-    def get_dict(self) -> dict[str, int | str]:
+    def get_dict(self) -> dict[str, str | int | None]:
         """Return the set's attributes as a dictionary for database operations."""
-        dictionary: dict[str, int | str] = {
+        dictionary: dict[str, str | int | None] = {
             "id": self.id,
             "name": self.name,
             "slug": self.slug,
-            "abbreviation": self.abbreviation if self.abbreviation is not None else "",
-            "release_date": self.release_date if self.release_date is not None else "",
-            "card_count": self.card_count if self.card_count is not None else 0,
+            "abbreviation": self.abbreviation,
+            "release_date": self.release_date,
+            "card_count": self.card_count,
             "sync_complete": self.sync_complete,
         }
         return dictionary

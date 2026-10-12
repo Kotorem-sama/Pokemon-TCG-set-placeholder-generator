@@ -8,7 +8,7 @@ from backend.database.db_operations import (
     Card,
     Card_operations,
     Set,
-    Set_operations,
+    SetOperations,
 )
 
 
@@ -17,7 +17,7 @@ class SyncService:
 
     def __init__(
         self,
-        set_op: Set_operations,
+        set_op: SetOperations,
         pokemonapi: PokemonTCGAPI,
         card_op: Card_operations,
     ) -> None:
@@ -43,7 +43,7 @@ class SyncService:
                 if new_set.id == 0 and new_set.sync_complete == 9:
                     return database_sets
 
-                if not self.set_operations.add_set(new_set):
+                if not self.set_operations.add(new_set.get_dict()):
                     return database_sets
 
                 database_sets.append(new_set)
@@ -174,10 +174,10 @@ class SyncService:
             return False
 
         if within_sync_window:
-            if not self.set_operations.delete_set(db_set.id):
+            if not self.set_operations.delete("id", {"id": db_set.id}):
                 return False
 
-            if not self.set_operations.add_set(db_set):
+            if not self.set_operations.add(db_set.get_dict()):
                 return False
 
         for card in api_response["data"]:
@@ -218,7 +218,7 @@ class SyncService:
             if db_set is None:
                 return None
 
-            if not self.set_operations.add_set(db_set):
+            if not self.set_operations.add(db_set.get_dict()):
                 return None
 
         if db_set.card_count is None:
@@ -227,7 +227,7 @@ class SyncService:
             if db_set == None:
                 return None
 
-            if not (self.set_operations.update_set(db_set)):
+            if not (self.set_operations.update(db_set.get_dict())):
                 return None
 
         within_sync_window = False
@@ -245,7 +245,7 @@ class SyncService:
 
         if not within_sync_window:
             db_set.sync_complete = 1
-            if not self.set_operations.update_set(db_set):
+            if not self.set_operations.update(db_set.get_dict()):
                 return None
 
         self.logger.info(f"Successfully added set '{set_id}'!")
