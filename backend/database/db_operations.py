@@ -297,10 +297,14 @@ class CardOperations(DatabaseOperationsBaseClass):
 
     def get_amount_in_set(self, set_id: int) -> int:
         """Retrieve amount of cards that are in a set."""
-        card_amount = self.get(
-            {"set_id": set_id}, "COUNT(*) AS total", where_clause="set_id = (:set_id)"
-        )[0]
-        return 0 if not card_amount["total"] or not isinstance(card_amount["total"], int) else card_amount["total"]
+        rows = self.get(
+            {"set_id": set_id}, "COUNT(*) AS total", where_clause="set_id = :set_id"
+        )
+        if not rows:
+            return 0
+
+        total = rows[0]["total"]
+        return total if isinstance(total, int) else 0
 
     def get_by_id(self, card_id: int) -> Card | None:
         """Retrieve a card using its ID."""
@@ -376,11 +380,15 @@ class CardImageOperations(DatabaseOperationsBaseClass):
         )
 
     def get_by_card_id(self, card_id: int) -> tuple[bytes, str] | None:
-        image = self.get(
-            {"card_id": card_id}, "image_data, content_type", where_clause="card_id = :card_id"
-        )[0]
-        if not image:
+        rows = self.get(
+            {"card_id": card_id},
+            "image_data, content_type",
+            where_clause="card_id = :card_id",
+        )
+        if not rows:
             return None
+
+        image = rows[0]
 
         if not isinstance(image["image_data"], bytes) or not isinstance(
             image["content_type"], str

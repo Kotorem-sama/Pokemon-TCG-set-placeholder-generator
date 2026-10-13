@@ -1,16 +1,17 @@
 from collections.abc import Generator
 from sqlite3 import Connection
 
-from database.db_operations import Card_operations, SetOperations
-from database.db_setup import DatabaseSetup
-from models import Card, Set
 from pytest import fixture
+
+from backend.database.db_operations import DatabaseOperations
+from backend.database.db_setup import DatabaseSetup
+from backend.models import Card, Set
 
 
 @fixture
 def db_context() -> Generator[Connection, None, None]:
     db = DatabaseSetup(":memory:")
-    db.initialise_db()  # returns the connection that has the tables
+    db.initialise_db()
 
     yield db.db_context
 
@@ -18,13 +19,8 @@ def db_context() -> Generator[Connection, None, None]:
 
 
 @fixture
-def set_operations(db_context: Connection) -> SetOperations:
-    return SetOperations(db_context)
-
-
-@fixture
-def card_operations(db_context: Connection) -> Card_operations:
-    return Card_operations(db_context)
+def database(db_context: Connection) -> DatabaseOperations:
+    return DatabaseOperations(db_context)
 
 
 @fixture
@@ -37,15 +33,63 @@ def test_card() -> Card:
     return Card(1, 1, "Test Card", "001", "Common")
 
 
+@fixture
+def stored_card(database: DatabaseOperations, test_set: Set, test_card: Card) -> Card:
+    """A card (and its parent set) that has been added to the database."""
+    assert database.sets.add(test_set.get_dict()) is True
+    assert database.cards.add(test_card.get_dict()) is True
+    return test_card
+
+
+# -------------------------
+# Generic operations
+# -------------------------
+
+
+def test_unknown_table_is_rejected(db_context: Connection):
+    from backend.database.db_operations import DatabaseOperationsBaseClass
+
+    try:
+        DatabaseOperationsBaseClass("users; DROP TABLE sets", db_context, ["id"])
+    except ValueError:
+        return
+    raise AssertionError("An unknown table name should raise a ValueError.")
+
+
+def test_add_duplicate_returns_false(database: DatabaseOperations, test_set: Set):
+    assert database.sets.add(test_set.get_dict()) is True
+    assert database.sets.add(test_set.get_dict()) is False
+
+
+def test_update_missing_entry_returns_false(
+    database: DatabaseOperations, test_set: Set
+):
+    assert database.sets.update(test_set.get_dict()) is False
+
+
+def test_delete_missing_entry_returns_false(database: DatabaseOperations):
+    assert database.sets.delete({"id": 999}) is False
+
+
+def test_delete_rejects_unknown_column(
+    database: DatabaseOperations, test_set: Set
+):
+    database.sets.add(test_set.get_dict())
+
+    assert database.sets.delete({"nonexistent": 1}) is False
+    assert database.sets.delete({}) is False
+    assert database.sets.get_by_id(1) is not None
+
+
 # -------------------------
 # Set tests
 # -------------------------
 
 
-def test_add_and_get_set(set_operations: SetOperations, test_set: Set):
-    assert set_operations.add(test_set.get_dict()) is True
+def test_add_and_get_set(database: DatabaseOperations, test_set: Set):
+    assert database.sets.add(test_set.get_dict()) is True
 
-    result = set_operations.get_set_by_id(1)
+    result = database.sets.get_by_id(1)
 
     assert result is not None
     assert result.id == 1
@@ -53,34 +97,80 @@ def test_add_and_get_set(set_operations: SetOperations, test_set: Set):
     assert result.slug == "test-set"
 
 
-def test_get_sets_by_year(set_operations: SetOperations, test_set: Set):
-    set_operations.add(test_set.get_dict())
+def test_get_missing_set(database: DatabaseOperations):
+    assert database.sets.get_by_id(999) is None
+    assert database.sets.get_by_name("Nope") is None
 
-    result = set_operations.get_sets_by_year(2026)
+
+def test_set_with_null_fields(database: DatabaseOperations):
+    null_set = Set(2, "Null Set", "null-set", None, None, None, 0)
+
+    assert database.sets.add(null_set.get_dict()) is True
+
+    result = database.sets.get_by_id(2)
+
+    assert result is not None
+    assert result.abbreviation is None
+    assert result.release_date is None
+    assert result.card_count is None
+
+
+def test_get_set_by_name(database: DatabaseOperations, test_set: Set):
+    database.sets.add(test_set.get_dict())
+
+    result = database.sets.get_by_name("Test Set")
+
+    assert result is not None
+    assert result.id == 1
+
+
+def test_get_all_sets(database: DatabaseOperations, test_set: Set):
+    database.sets.add(test_set.get_dict())
+    database.sets.add(Set(2, "Other", "other", None, "2025-05-05", 1, 0).get_dict())
+
+    assert len(database.sets.get_all()) == 2
+
+
+def test_get_sets_by_year(database: DatabaseOperations, test_set: Set):
+    database.sets.add(test_set.get_dict())
+    database.sets.add(Set(2, "Old", "old", None, "2025-05-05", 1, 0).get_dict())
+
+    result = database.sets.get_by_year(2026)
 
     assert len(result) == 1
     assert result[0].name == "Test Set"
+    assert database.sets.get_by_year(1999) == []
 
 
-def test_update_set(set_operations: SetOperations, test_set: Set):
-    set_operations.add(test_set.get_dict())
+def test_get_release_date_years(database: DatabaseOperations, test_set: Set):
+    database.sets.add(test_set.get_dict())
+    database.sets.add(Set(2, "Old", "old", None, "2025-05-05", 1, 0).get_dict())
+    database.sets.add(Set(3, "Same", "same", None, "2025-06-06", 1, 0).get_dict())
+    database.sets.add(Set(4, "None", "none", None, None, 1, 0).get_dict())
+    database.sets.add(Set(5, "Empty", "empty", None, "", 1, 0).get_dict())
+
+    assert database.sets.get_release_date_years() == ["2026", "2025"]
+
+
+def test_update_set(database: DatabaseOperations, test_set: Set):
+    database.sets.add(test_set.get_dict())
 
     test_set.name = "Updated Set"
 
-    assert set_operations.update(test_set.get_dict()) is True
+    assert database.sets.update(test_set.get_dict()) is True
 
-    result = set_operations.get_set_by_id(1)
+    result = database.sets.get_by_id(1)
 
     assert result is not None
     assert result.name == "Updated Set"
 
 
-def test_delete_set(set_operations: SetOperations, test_set: Set):
-    set_operations.add(test_set.get_dict())
+def test_delete_set(database: DatabaseOperations, test_set: Set):
+    database.sets.add(test_set.get_dict())
 
-    assert set_operations.delete("id", {"id": 1}) is True
+    assert database.sets.delete({"id": 1}) is True
 
-    assert set_operations.get_set_by_id(1) is None
+    assert database.sets.get_by_id(1) is None
 
 
 # -------------------------
@@ -88,85 +178,72 @@ def test_delete_set(set_operations: SetOperations, test_set: Set):
 # -------------------------
 
 
-def test_add_and_get_card(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-
-    assert card_operations.add_card(test_card) is True
-
-    result = card_operations.get_card_by_id(1)
+def test_add_and_get_card(database: DatabaseOperations, stored_card: Card):
+    result = database.cards.get_by_id(1)
 
     assert result is not None
-    assert result.id == 1
     assert result.name == "Test Card"
-    assert result.number == "001"
+    assert result.set_id == 1
 
 
-def test_get_cards_by_set(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
-
-    result = card_operations.get_cards_by_set(1)
-
-    assert len(result) == 1
-    assert result[0].name == "Test Card"
+def test_get_missing_card(database: DatabaseOperations):
+    assert database.cards.get_by_id(999) is None
 
 
-def test_get_cards_by_rarity(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
+def test_get_all_cards(database: DatabaseOperations, stored_card: Card):
+    assert len(database.cards.get_all()) == 1
 
-    result = card_operations.get_cards_by_rarity("Common")
+
+def test_get_cards_in_set(database: DatabaseOperations, stored_card: Card):
+    result = database.cards.get_in_set(1)
 
     assert len(result) == 1
-    assert result[0].name == "Test Card"
+    assert result[0].id == 1
+    assert database.cards.get_in_set(999) == []
 
 
-def test_update_card(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
+def test_get_amount_in_set(database: DatabaseOperations, stored_card: Card):
+    assert database.cards.get_amount_in_set(1) == 1
+    assert database.cards.get_amount_in_set(999) == 0
 
-    test_card.name = "Updated Card"
 
-    assert card_operations.update_card(test_card) is True
+def test_get_rarities_in_set(database: DatabaseOperations, stored_card: Card):
+    database.cards.add(Card(2, 1, "Rare Card", "002", "Rare").get_dict())
+    database.cards.add(Card(3, 1, "Promo Card", "003", "Promo").get_dict())
+    database.cards.add(Card(4, 1, "Uncommon Card", "004", "Uncommon").get_dict())
 
-    result = card_operations.get_card_by_id(1)
+    assert database.cards.get_rarities_in_set(1) == [
+        "Common",
+        "Uncommon",
+        "Rare",
+        "Promo",
+    ]
+    assert database.cards.get_rarities_in_set(999) == []
+
+
+def test_update_card(database: DatabaseOperations, stored_card: Card):
+    stored_card.name = "Updated Card"
+
+    assert database.cards.update(stored_card.get_dict()) is True
+
+    result = database.cards.get_by_id(1)
 
     assert result is not None
     assert result.name == "Updated Card"
 
 
-def test_delete_card(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
+def test_delete_card(database: DatabaseOperations, stored_card: Card):
+    assert database.cards.delete({"id": 1}) is True
+
+    assert database.cards.get_by_id(1) is None
+
+
+def test_deleting_set_cascades_to_cards(
+    database: DatabaseOperations, stored_card: Card
 ):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
+    assert database.sets.delete({"id": 1}) is True
 
-    assert card_operations.delete_card(1) is True
-
-    assert card_operations.get_card_by_id(1) is None
+    assert database.cards.get_by_id(1) is None
 
 
 # -------------------------
@@ -174,53 +251,37 @@ def test_delete_card(
 # -------------------------
 
 
-def test_add_and_get_variant(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
+def test_add_and_get_variants(database: DatabaseOperations, stored_card: Card):
+    assert database.variants.add({"card_id": 1, "variant": "Holofoil"}) is True
+    assert database.variants.add({"card_id": 1, "variant": "Normal"}) is True
+    assert database.variants.add({"card_id": 1, "variant": "Reverse Holofoil"}) is True
+
+    assert database.variants.get_by_card_id(1) == [
+        "Normal",
+        "Reverse Holofoil",
+        "Holofoil",
+    ]
+
+
+def test_get_variants_in_set(database: DatabaseOperations, stored_card: Card):
+    database.variants.add({"card_id": 1, "variant": "Normal"})
+    database.variants.add({"card_id": 1, "variant": "Reverse Holofoil"})
+
+    result = database.variants.get_in_set(1)
+
+    assert sorted(result) == ["Normal", "Reverse Holofoil"]
+    assert database.variants.get_in_set(999) == []
+
+
+def test_delete_all_variants_by_card_id(
+    database: DatabaseOperations, stored_card: Card
 ):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
+    database.variants.add({"card_id": 1, "variant": "Normal"})
+    database.variants.add({"card_id": 1, "variant": "Holofoil"})
 
-    assert card_operations.add_variant(1, "Normal") is True
+    assert database.variants.delete_all_by_card_id(1) is True
 
-    result = card_operations.get_variants(1)
-
-    assert result == ["Normal"]
-
-
-def test_get_variant_types_in_set(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
-
-    card_operations.add_variant(1, "Normal")
-    card_operations.add_variant(1, "Reverse Holofoil")
-
-    result = card_operations.get_variant_types_in_set(1)
-
-    assert set(result) == {"Normal", "Reverse Holofoil"}
-
-
-def test_delete_variant(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
-
-    card_operations.add_variant(1, "Normal")
-
-    assert card_operations.delete_variant(1, "Normal") is True
-
-    assert card_operations.get_variants(1) == []
+    assert database.variants.get_by_card_id(1) == []
 
 
 # -------------------------
@@ -228,84 +289,16 @@ def test_delete_variant(
 # -------------------------
 
 
-def test_save_and_get_image(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
+def test_add_and_get_image(database: DatabaseOperations, stored_card: Card):
+    assert (
+        database.images.add(
+            {"card_id": 1, "image_data": b"fake-image", "content_type": "image/png"}
+        )
+        is True
+    )
 
-    image_data = b"fake image data"
-    content_type = "image/png"
-
-    assert card_operations.save_image(1, image_data, content_type) is True
-
-    result = card_operations.get_image(1)
-
-    assert result is not None
-
-    stored_image, stored_content_type = result
-
-    assert stored_image == image_data
-    assert stored_content_type == content_type
+    assert database.images.get_by_card_id(1) == (b"fake-image", "image/png")
 
 
-def test_get_missing_image(card_operations: Card_operations):
-    result = card_operations.get_image(999)
-
-    assert result is None
-
-
-def test_delete_image(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
-
-    card_operations.save_image(1, b"fake image data", "image/png")
-
-    assert card_operations.delete_image(1) is True
-
-    assert card_operations.get_image(1) is None
-
-
-# -------------------------
-# Cascade tests
-# -------------------------
-
-
-def test_delete_card_cascades_variants_and_image(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
-
-    card_operations.add_variant(1, "Normal")
-    card_operations.save_image(1, b"fake image data", "image/png")
-
-    assert card_operations.delete_card(1) is True
-
-    assert card_operations.get_variants(1) == []
-    assert card_operations.get_image(1) is None
-
-
-def test_delete_set_cascades_cards(
-    set_operations: SetOperations,
-    card_operations: Card_operations,
-    test_set: Set,
-    test_card: Card,
-):
-    set_operations.add(test_set.get_dict())
-    card_operations.add_card(test_card)
-
-    assert set_operations.delete("id", {"id": 1}) is True
-
-    assert card_operations.get_card_by_id(1) is None
+def test_get_missing_image(database: DatabaseOperations):
+    assert database.images.get_by_card_id(999) is None
