@@ -1,11 +1,14 @@
 from logging import getLogger
 from sqlite3 import Connection
 
-from backend.services.pokemon_tcg_api_service import PokemonTCGAPI
 from backend.database.db_operations import DatabaseOperations
+from backend.functions.folder_functions import (
+    get_images_in_set_folder,
+    remove_set_images,
+)
 from backend.services.document_generation_service import DocumentGeneration
 from backend.services.image_generation_service import ImageGeneration
-from backend.functions.folder_functions import remove_set_images, get_images_in_set_folder
+from backend.services.pokemon_tcg_api_service import PokemonTCGAPI
 from backend.services.sync_service import SyncService
 
 

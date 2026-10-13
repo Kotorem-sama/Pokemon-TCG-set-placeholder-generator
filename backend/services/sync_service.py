@@ -3,8 +3,8 @@ from logging import getLogger
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
-from backend.services.pokemon_tcg_api_service import PokemonTCGAPI
 from backend.database.db_operations import Card, DatabaseOperations, Set
+from backend.services.pokemon_tcg_api_service import PokemonTCGAPI
 
 
 class SyncService:

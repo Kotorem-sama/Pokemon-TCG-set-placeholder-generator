@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from backend.core.startup import startup, get_database
+from backend.core.startup import get_database, startup
 from backend.services.backend_service import Backend
 
 app = FastAPI(

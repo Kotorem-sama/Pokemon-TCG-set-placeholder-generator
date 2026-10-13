@@ -18,6 +18,7 @@ SUPPORTED_EXTENSIONS: list[str] = [
 
 logger = getLogger(__name__)
 
+
 def get_images_in_set_folder(set_name: str) -> list[str]:
     """
     Retrieve all image file paths for a given Pokémon set.
@@ -54,6 +55,7 @@ def get_images_in_set_folder(set_name: str) -> list[str]:
     except OSError as e:
         logger.error(f"Error retrieving images for set '{set_name}': {e}")
         return []
+
 
 def remove_set_images(set_name: str):
     set_name = sanitize_filename(set_name)

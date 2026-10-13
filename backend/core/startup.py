@@ -1,4 +1,4 @@
-from logging import WARNING, FileHandler, getLogger, StreamHandler, basicConfig
+from logging import WARNING, FileHandler, StreamHandler, basicConfig, getLogger
 from pathlib import Path
 from sys import exit as exit_program
 
@@ -27,13 +27,16 @@ def setup_logging():
         ],
     )
 
+
 def setup_database() -> DatabaseSetup:
     """Create and validate the application's SQLite database."""
     logger = getLogger(__name__)
     database_dir = Path(__file__).resolve().parent.parent / "database"
     database_path = database_dir / "pokemon_cards.db"
-    
-    logger.info(f"Setting up the database. Database directory is set to {database_dir}.")    
+
+    logger.info(
+        f"Setting up the database. Database directory is set to {database_dir}."
+    )
     database_dir.mkdir(parents=True, exist_ok=True)
 
     db = DatabaseSetup(str(database_path))
@@ -49,11 +52,13 @@ def setup_database() -> DatabaseSetup:
     logger.info("Initialised the database succesfully!")
     return db
 
+
 def get_database() -> DatabaseSetup:
     database_path = (
         Path(__file__).resolve().parent.parent / "database" / "pokemon_cards.db"
     )
     return DatabaseSetup(str(database_path))
+
 
 def tests():
     """Run the project's unit tests and stop the application on failure."""
@@ -70,4 +75,3 @@ def tests():
         exit_program(1)
 
     logger.info("Tests have successfully been conducted!")
-    
