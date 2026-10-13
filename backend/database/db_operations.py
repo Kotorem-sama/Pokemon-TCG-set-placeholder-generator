@@ -6,6 +6,14 @@ from backend.models import Card, Set
 
 
 class DatabaseOperations:
+    def __init__(self, context: Connection) -> None:
+        self.sets = SetOperations(context)
+        self.cards = CardOperations(context)
+        self.variants = CardVariantsOperations(context)
+        self.images = CardImageOperations(context)
+
+
+class DatabaseOperationsBaseClass:
     def __init__(
         self, table_name: str, context: Connection, columns: list[str]
     ) -> None:
@@ -21,6 +29,7 @@ class DatabaseOperations:
         self,
         values: dict[str, str | int],
         what_clause: str,
+        join_clause: str = "",
         where_clause: str = "1=1",
         suffix: str = "",
         fetch_all: bool = False,
@@ -29,7 +38,7 @@ class DatabaseOperations:
         cursor = self.context.cursor()
         try:
             cursor.execute(
-                f"SELECT {what_clause} FROM {self.table_name} WHERE {where_clause} {suffix}",
+                f"SELECT {what_clause} FROM {self.table_name} {join_clause} WHERE {where_clause} {suffix}",
                 values,
             )
             rows: list[Row] = (
@@ -44,7 +53,7 @@ class DatabaseOperations:
         finally:
             cursor.close()
 
-    def add(self, new_entry: dict[str, str | int | None]) -> bool:
+    def add(self, new_entry: dict[str, str | int | bytes | None]) -> bool:
         """Adds data to the set table."""
         self.logger.info(f"Adding '{new_entry}' to the table '{self.table_name}'.")
         cursor = self.context.cursor()
@@ -73,7 +82,7 @@ class DatabaseOperations:
         finally:
             cursor.close()
 
-    def update(self, update_entry: dict[str, str | int | None]) -> bool:
+    def update(self, update_entry: dict[str, str | int | bytes | None]) -> bool:
         self.logger.info(f"Updating {update_entry} to the table {self.table_name}.")
         cursor = self.context.cursor()
         try:
@@ -98,41 +107,42 @@ class DatabaseOperations:
         finally:
             cursor.close()
 
-    def delete(self, column_name: str, values: dict[str, str | int]) -> bool:
+    def delete(self, values: dict[str, str | int | bytes | None]) -> bool:
         """Delete inserted id from the class' table."""
         self.logger.info(
-            f"Attempting to delete '{column_name}' from table '{self.table_name}'."
+            f"Attempting to delete '{values}' from table '{self.table_name}'."
         )
 
-        if column_name not in self.columns:
+        if not values or any(col not in self.columns for col in values):
             self.logger.warning(
-                f"Unknown column '{column_name}' for table '{self.table_name}'."
+                f"Invalid delete keys {list(values)} for '{self.table_name}'."
             )
             return False
 
-        cursor = self.context.cursor()
+        where_clause = " AND ".join(f"{col} = :{col}" for col in values)
 
+        cursor = self.context.cursor()
         try:
             cursor.execute(
-                f"""DELETE FROM {self.table_name} WHERE {column_name}=(:{column_name})""",
+                f"""DELETE FROM {self.table_name} WHERE {where_clause}""",
                 values,
             )
             self.context.commit()
+
+            self.logger.info(
+                f"Successfully deleted '{values}' from table '{self.table_name}'!"
+            )
+            return cursor.rowcount > 0
         except db_error as error:
             self.logger.warning(
-                f"Failed to delete '{column_name}' from table '{self.table_name}': {error}."
+                f"Failed to delete '{values}' from table '{self.table_name}': {error}."
             )
             return False
         finally:
             cursor.close()
 
-        self.logger.info(
-            f"Successfully deleted '{column_name}' from table '{self.table_name}'!"
-        )
-        return True
 
-
-class SetOperations(DatabaseOperations):
+class SetOperations(DatabaseOperationsBaseClass):
     """Provides database operations for Pokémon TCG sets."""
 
     def __init__(self, context: Connection) -> None:
@@ -150,7 +160,7 @@ class SetOperations(DatabaseOperations):
             ],
         )
 
-    def cast_as_sets(
+    def __cast_as_sets(
         self, data: list[dict[str, str | int | bytes | None]]
     ) -> list[Set]:
         sets: list[Set] = []
@@ -188,49 +198,54 @@ class SetOperations(DatabaseOperations):
             )
         return sets
 
-    def get_sets_by_year(self, year: int) -> list[Set]:
+    def get_by_year(self, year: int) -> list[Set]:
         """Retrieve all sets released in a specific year."""
-        return self.cast_as_sets(
+        return self.__cast_as_sets(
             self.get(
-                {"year": str(year)}, "*", "substr(release_date, 1, 4) = :year", "", True
+                {"year": str(year)},
+                "*",
+                where_clause="substr(release_date, 1, 4) = :year",
+                fetch_all=True,
             )
         )
 
-    def get_all_sets(self) -> list[Set]:
+    def get_all(self) -> list[Set]:
         """Retrieve all sets from the database."""
-        return self.cast_as_sets(self.get({}, "*", fetch_all=True))
+        return self.__cast_as_sets(self.get({}, "*", fetch_all=True))
 
-    def get_set_by_id(self, set_id: int) -> Set | None:
+    def get_by_id(self, set_id: int) -> Set | None:
         """Retrieve set by it's id."""
-        current_set = self.cast_as_sets(self.get({"id": set_id}, "*", "id = :id"))
-        return None if not current_set else current_set[0]
-
-    def get_set_by_name(self, set_name: str) -> Set | None:
-        """Retrieve sets matching a name."""
-        current_set = self.cast_as_sets(
-            self.get({"name": set_name}, "*", "name = :name")
+        current_set = self.__cast_as_sets(
+            self.get({"id": set_id}, "*", where_clause="id = :id")
         )
         return None if not current_set else current_set[0]
 
-    def get_set_years(self) -> list[str]:
+    def get_by_name(self, set_name: str) -> Set | None:
+        """Retrieve sets matching a name."""
+        current_set = self.__cast_as_sets(
+            self.get({"name": set_name}, "*", where_clause="name = :name")
+        )
+        return None if not current_set else current_set[0]
+
+    def get_release_date_years(self) -> list[str]:
         """Retrieve all years of sets that are in the database. Returns a list of strings."""
         years = self.get(
             {},
-            "DISTINCT substr(release_date, 1, 4)",
-            "release_date IS NOT NULL AND release_date != ''",
-            "ORDER BY substr(release_date, 1, 4) DESC",
-            True,
+            "DISTINCT substr(release_date, 1, 4) AS year",
+            where_clause="release_date IS NOT NULL AND release_date != ''",
+            suffix="ORDER BY year DESC",
+            fetch_all=True,
         )
-        return [str(year["substr(release_date, 1, 4)"]) for year in years]
+        return [str(year["year"]) for year in years]
 
 
-class CardOperations(DatabaseOperations):
+class CardOperations(DatabaseOperationsBaseClass):
     """Provides database operations for Pokémon TCG cards and their properties."""
 
     def __init__(self, context: Connection) -> None:
         super().__init__("cards", context, ["id", "set_id", "name", "number", "rarity"])
 
-    def cast_as_cards(
+    def __cast_as_cards(
         self, data: list[dict[str, str | int | bytes | None]]
     ) -> list[Card]:
         """Helper function that can cast database responses into type Card."""
@@ -259,27 +274,39 @@ class CardOperations(DatabaseOperations):
                     set_id,
                     name,
                     number if isinstance(number, str) else None,
-                    rarity if isinstance(rarity, str) else None
+                    rarity if isinstance(rarity, str) else None,
                 )
             )
         return cards
 
-    def get_all_cards(self) -> list[Card]:
+    def get_all(self) -> list[Card]:
         """Retrieve all cards from the database."""
-        return self.cast_as_cards(self.get({}, "*", fetch_all=True))
+        return self.__cast_as_cards(self.get({}, "*", fetch_all=True))
 
-    def get_cards_by_set(self, set_id: int) -> list[Card]:
+    def get_in_set(self, set_id: int) -> list[Card]:
         """Retrieve all cards belonging to a specific set."""
-        return self.cast_as_cards(self.get({"set_id": set_id}, "*", "set_id = :set_id", "ORDER BY number ASC, name ASC", True))
+        return self.__cast_as_cards(
+            self.get(
+                {"set_id": set_id},
+                "*",
+                where_clause="set_id = :set_id",
+                suffix="ORDER BY number ASC, name ASC",
+                fetch_all=True,
+            )
+        )
 
-    def get_cards_amount_in_set(self, set_id: int) -> int:
+    def get_amount_in_set(self, set_id: int) -> int:
         """Retrieve amount of cards that are in a set."""
-        card_amount = self.get({"set_id": set_id}, "COUNT(*)", "set_id = (:set_id)")[0]["COUNT(*)"]
+        card_amount = self.get(
+            {"set_id": set_id}, "COUNT(*)", where_clause="set_id = (:set_id)"
+        )[0]["COUNT(*)"]
         return 0 if not card_amount or not isinstance(card_amount, int) else card_amount
 
-    def get_cards_by_id(self, card_id: int) -> Card | None:
+    def get_by_card_id(self, card_id: int) -> Card | None:
         """Retrieve a card using its ID."""
-        current_card = self.cast_as_cards(self.get({"id": card_id}, "*", "id = :id"))
+        current_card = self.__cast_as_cards(
+            self.get({"id": card_id}, "*", where_clause="id = :id")
+        )
         return None if not current_card else current_card[0]
 
     def get_rarities_in_set(self, set_id: int) -> list[str]:
@@ -287,214 +314,77 @@ class CardOperations(DatabaseOperations):
         rarities = self.get(
             {"set_id": set_id},
             "rarity",
-            "set_id = :set_id AND rarity IS NOT NULL",
-            """GROUP BY rarity
+            where_clause="set_id = :set_id AND rarity IS NOT NULL",
+            suffix="""GROUP BY rarity
             ORDER BY CASE rarity
                 WHEN 'Common' THEN 1
                 WHEN 'Uncommon' THEN 2
                 WHEN 'Rare' THEN 3
                 ELSE 4
             END, MIN(CAST(number AS INTEGER))""",
-            True,
+            fetch_all=True,
         )
         return [str(rarity["rarity"]) for rarity in rarities]
 
 
-class Card_operations:
+class CardVariantsOperations(DatabaseOperationsBaseClass):
+    def __init__(
+        self,
+        context: Connection,
+    ) -> None:
+        super().__init__("card_variants", context, ["card_id", "variant"])
+
+    def get_by_card_id(self, card_id: int) -> list[str]:
+        """Retrieve all variants belonging to a card in a predefined order."""
+        variants = self.get(
+            {"card_id": card_id},
+            "variant",
+            where_clause="card_id = :card_id",
+            suffix="""ORDER BY CASE variant
+                        WHEN 'Normal' THEN 1
+                        WHEN 'Reverse Holofoil' THEN 2
+                        WHEN 'Holofoil' THEN 3
+                        ELSE 4
+                    END, variant ASC
+                    """,
+            fetch_all=True,
+        )
+
+        return [str(variant["variant"]) for variant in variants]
+
+    def get_in_set(self, set_id: int) -> list[str]:
+        """Retrieve all unique variant types used within a set."""
+        variants = self.get(
+            {"set_id": set_id},
+            "DISTINCT variant",
+            "JOIN cards ON card_variants.card_id = cards.id",
+            "cards.set_id = :set_id",
+            fetch_all=True,
+        )
+        return [str(variant["variant"]) for variant in variants]
+
+    def delete_all_by_card_id(self, card_id: int) -> bool:
+        return self.delete({"card_id": card_id})
+
+
+class CardImageOperations(DatabaseOperationsBaseClass):
     """Provides database operations for Pokémon TCG cards and their properties."""
 
-    def __init__(self, db_context: Connection) -> None:
-        self.logger = getLogger(__name__)
-        self.db_context = db_context
-
-    # Card variant operations starts here
-    def __get_variants_by_query(
-        self, query: str, values: dict[str, str | int | None]
-    ) -> list[str]:
-        """Retrieve card variants using a custom SQL query."""
-        cursor = self.db_context.cursor()
-
-        cursor.execute(query, values)
-        tuple_list = cursor.fetchall()
-        cursor.close()
-        variants_list: list[str] = []
-
-        for tpl in tuple_list:
-            variants_list.append(tpl["variant"])
-
-        return variants_list
-
-    def add_variant(self, card_id: int, variant: str) -> bool:
-        """Add a variant to a card in the database."""
-
-        self.logger.info(
-            f"Adding card variant '{variant}' of card '{card_id}' to the database."
-        )
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                """INSERT INTO card_variants (card_id, variant) VALUES (:card_id, :variant)""",
-                {"card_id": card_id, "variant": variant},
-            )
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to add card variant '{variant}' of card '{card_id}' to the database: {error}."
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(
-            f"Successfully added card variant '{variant}' of card '{card_id}' to the database."
-        )
-        return True
-
-    def get_variants(self, card_id: int) -> list[str]:
-        """Retrieve all variants belonging to a card in a predefined order."""
-        return self.__get_variants_by_query(
-            """
-            SELECT variant
-            FROM card_variants
-            WHERE card_id = :card_id
-            ORDER BY CASE variant
-                WHEN 'Normal' THEN 1
-                WHEN 'Reverse Holofoil' THEN 2
-                WHEN 'Holofoil' THEN 3
-                ELSE 4
-            END, variant ASC
-            """,
-            {"card_id": card_id},
+    def __init__(self, context: Connection) -> None:
+        super().__init__(
+            "card_images", context, ["card_id", "image_data", "content_type"]
         )
 
-    def get_variant_types_in_set(self, set_id: int) -> list[str]:
-        """Retrieve all unique variant types used within a set."""
-        return self.__get_variants_by_query(
-            """SELECT DISTINCT variant FROM card_variants
-                                            JOIN cards ON card_variants.card_id = cards.id
-                                            WHERE cards.set_id = :set_id""",
-            {"set_id": set_id},
-        )
-
-    def delete_variant(self, card_id: int, variant: str) -> bool:
-        """Delete a specific variant from a card."""
-
-        self.logger.info("Deleting variant '%s' from card '%s'", variant, card_id)
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                """DELETE FROM card_variants WHERE (card_id, variant)=(:card_id, :variant)""",
-                {"card_id": card_id, "variant": variant},
-            )
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                "Failed to delete variant '%s' of card '%s' from the database: '%s'.",
-                variant,
-                card_id,
-                error,
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(
-            "Successfully deleted variant '%s' of card '%s' from the database.",
-            variant,
-            card_id,
-        )
-        return True
-
-    def delete_variants(self, card_id: int) -> bool:
-        """Delete all variants belonging to a card."""
-        variants = self.get_variants(card_id)
-        if not variants:
-            return True
-
-        for variant in variants:
-            if not self.delete_variant(card_id, variant):
-                return False
-
-        return True
-
-    # Card image operations
-    def save_image(self, card_id: int, image_data: bytes, content_type: str) -> bool:
-        """Save a card image to the database."""
-
-        self.logger.info(f"Adding card image of card '{card_id}' to the database.")
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                """INSERT INTO card_images (card_id, image_data, content_type) VALUES (:card_id, :image_data, :content_type)""",
-                {
-                    "card_id": card_id,
-                    "image_data": image_data,
-                    "content_type": content_type,
-                },
-            )
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to add image of card '{card_id}' to the database: {error}."
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(f"Successfully added image of card {card_id} to the database.")
-        return True
-
-    def get_image(self, card_id: int) -> tuple[bytes, str] | None:
-        """Retrieve a card image and its content type."""
-        cursor = self.db_context.cursor()
-
-        cursor.execute(
-            """SELECT * FROM card_images WHERE card_id = :card_id""",
-            {"card_id": card_id},
-        )
-        image = cursor.fetchone()
-        cursor.close()
-
-        if image is None:
+    def get_by_card_id(self, card_id: int) -> tuple[bytes, str] | None:
+        image = self.get(
+            {"card_id": card_id}, "image_data, content_type", "card_id = :card_id"
+        )[0]
+        if not image:
             return None
 
-        if image["image_data"] is None:
+        if not isinstance(image["image_data"], bytes) or not isinstance(
+            image["content_type"], str
+        ):
             return None
 
-        return image["image_data"], image["content_type"]
-
-    def delete_image(self, card_id: int) -> bool:
-        """Delete a card image from the database."""
-
-        self.logger.info(f"Deleting image of card '{card_id}' from the database.")
-        cursor = self.db_context.cursor()
-
-        try:
-            cursor.execute(
-                """DELETE FROM card_images WHERE card_id=:card_id""",
-                {"card_id": card_id},
-            )
-            self.db_context.commit()
-
-        except db_error as error:
-            self.logger.warning(
-                f"Failed to delete image of card '{card_id}' from the database: {error}."
-            )
-            return False
-
-        finally:
-            cursor.close()
-
-        self.logger.info(
-            f"Successfully deleted image of card '{card_id}' from the database"
-        )
-        return True
+        return (image["image_data"], image["content_type"])

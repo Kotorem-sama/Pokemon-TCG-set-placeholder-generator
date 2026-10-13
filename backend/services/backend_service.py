@@ -2,7 +2,7 @@ from logging import getLogger
 from sqlite3 import Connection
 
 from backend.api.pokemon_tcg_api import PokemonTCGAPI
-from backend.database.db_operations import Card_operations, SetOperations
+from backend.database.db_operations import DatabaseOperations
 from backend.services.document_generation_service import DocumentGeneration
 from backend.services.image_generation_service import ImageGeneration
 from backend.services.image_utils import ImageUtils
@@ -11,35 +11,30 @@ from backend.services.sync_service import SyncService
 
 class Backend:
     def __init__(self, db_context: Connection) -> None:
-        self.set_operations = SetOperations(db_context)
-        self.card_operations = Card_operations(db_context)
+        self.database = DatabaseOperations(db_context)
         self.PokemonTCGAPI = PokemonTCGAPI()
-        self.sync_service = SyncService(
-            self.set_operations, self.PokemonTCGAPI, self.card_operations
-        )
-        self.image_generation_service = ImageGeneration(
-            self.card_operations, self.set_operations
-        )
+        self.sync_service = SyncService(self.database, self.PokemonTCGAPI)
+        self.image_generation_service = ImageGeneration(self.database)
         self.document_generation_service = DocumentGeneration()
         self.image_utils = ImageUtils()
         self.logger = getLogger(__name__)
 
     def get_years(self):
-        return self.set_operations.get_set_years()
+        return self.database.sets.get_release_date_years()
 
     def get_sets_in_year(self, year: int):
-        return self.set_operations.get_sets_by_year(year)
+        return self.database.sets.get_by_year(year)
 
     def get_variants_in_set(self, set_id: int):
-        return self.card_operations.get_variant_types_in_set(set_id)
+        return self.database.variants.get_in_set(set_id)
 
     def get_rarities_in_set(self, set_id: int):
-        return self.set_operations.get_rarities_in_set(set_id)
+        return self.database.cards.get_rarities_in_set(set_id)
 
     async def get_document(self, set_name: str):
         set_sync = await self.sync_service.sync_sets()
 
-        current_set = self.set_operations.get_set_by_name(set_name)
+        current_set = self.database.sets.get_by_name(set_name)
 
         if not current_set:
             if set_sync:

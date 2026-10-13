@@ -34,7 +34,7 @@ def test_set() -> Set:
 
 @fixture
 def test_card() -> Card:
-    return Card(1, 1, "Test Card", "001", "Common", [])
+    return Card(1, 1, "Test Card", "001", "Common")
 
 
 # -------------------------

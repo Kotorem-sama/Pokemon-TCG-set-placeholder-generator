@@ -6,13 +6,7 @@ class Card:
     """Represents a Pokémon card and its associated metadata."""
 
     def __init__(
-        self,
-        id: int,
-        set_id: int,
-        name: str,
-        number: str | None,
-        rarity: str | None,
-        card_variants: list[str] | None = None,
+        self, id: int, set_id: int, name: str, number: str | None, rarity: str | None
     ):
         """Initialize a card with its details and optional variants."""
         self.id = id
@@ -20,7 +14,6 @@ class Card:
         self.name = name
         self.number = number
         self.rarity = rarity
-        self.card_variants = [] if card_variants is None else card_variants
 
     @classmethod
     def from_api_to_Card(cls, jsondata: Any, set_id: int):
@@ -42,7 +35,7 @@ class Card:
             )
 
             # A special ID indicates that the API data could not be converted.
-            new_card = cls(0, 0, "", None, None, None)
+            new_card = cls(0, 0, "", None, None)
             return new_card
 
     def __str__(self):
@@ -53,14 +46,13 @@ class Card:
         """Use the readable string representation when displaying the object."""
         return self.__str__()
 
-    def get_dict(self) -> dict[str, int | str | list[str]]:
+    def get_dict(self) -> dict[str, str | int | bytes | None]:
         """Return the card's attributes as a dictionary for database operations."""
-        dictionary: dict[str, int | str | list[str]] = {
+        dictionary: dict[str, str | int | bytes | None] = {
             "id": self.id,
             "set_id": self.set_id,
             "name": self.name,
             "number": self.number if self.number is not None else "",
             "rarity": self.rarity if self.rarity is not None else "",
-            "card_variants": self.card_variants,
         }
         return dictionary

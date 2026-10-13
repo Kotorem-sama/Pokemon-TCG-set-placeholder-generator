@@ -4,18 +4,15 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
-from backend.database.db_operations import Card, Card_operations, SetOperations
+from backend.database.db_operations import Card, DatabaseOperations
 from backend.services.image_utils import ImageUtils
 from backend.services.name_service import sanitize_filename
 
 
 class ImageGeneration:
-    def __init__(
-        self, card_operations: Card_operations, set_operations: SetOperations
-    ) -> None:
+    def __init__(self, db_operations: DatabaseOperations) -> None:
         self.logger = getLogger(__name__)
-        self.card_operations = card_operations
-        self.set_operations = set_operations
+        self.database = db_operations
 
     def retrieve_extension(self, image_tuple: tuple[bytes, str]) -> str:
         """
@@ -380,8 +377,8 @@ class ImageGeneration:
         try:
             self.logger.info(f"Generating images for card: {current_card.name}")
 
-            card_variants = self.card_operations.get_variants(current_card.id)
-            card_image = self.card_operations.get_image(current_card.id)
+            card_variants = self.database.variants.get_by_card_id(current_card.id)
+            card_image = self.database.images.get_by_card_id(current_card.id)
 
             if card_image is None:
                 self.logger.info(
@@ -418,13 +415,13 @@ class ImageGeneration:
         try:
             self.logger.info(f"Starting image generation for set ID: {set_id}")
 
-            current_set = self.set_operations.get_set_by_id(set_id)
+            current_set = self.database.sets.get_by_id(set_id)
 
             if current_set is None:
                 self.logger.error(f"Set with ID {set_id} not found.")
                 return False
 
-            cards_in_set = self.card_operations.get_cards_by_set(set_id)
+            cards_in_set = self.database.cards.get_in_set(set_id)
             self.logger.info(
                 f"Found {len(cards_in_set)} cards in set '{current_set.name}'"
             )

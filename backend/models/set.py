@@ -55,9 +55,9 @@ class Set:
         """Use the readable string representation when displaying the object."""
         return self.__str__()
 
-    def get_dict(self) -> dict[str, str | int | None]:
+    def get_dict(self) -> dict[str, str | int | bytes | None]:
         """Return the set's attributes as a dictionary for database operations."""
-        dictionary: dict[str, str | int | None] = {
+        dictionary: dict[str, str | int | bytes | None] = {
             "id": self.id,
             "name": self.name,
             "slug": self.slug,

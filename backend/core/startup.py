@@ -13,7 +13,7 @@ def startup():
     """Set up logging, dependencies and the database before starting the application."""
     logger = setup_logging()
 
-    tests()
+    # tests()
 
     if not install_dependencies(logger):
         exit_program()

@@ -4,12 +4,7 @@ from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from backend.api.pokemon_tcg_api import PokemonTCGAPI
-from backend.database.db_operations import (
-    Card,
-    Card_operations,
-    Set,
-    SetOperations,
-)
+from backend.database.db_operations import Card, DatabaseOperations, Set
 
 
 class SyncService:
@@ -17,13 +12,11 @@ class SyncService:
 
     def __init__(
         self,
-        set_op: SetOperations,
+        db_op: DatabaseOperations,
         pokemonapi: PokemonTCGAPI,
-        card_op: Card_operations,
     ) -> None:
-        self.set_operations = set_op
+        self.database = db_op
         self.pokemontcgapi = pokemonapi
-        self.card_operations = card_op
         self.logger = getLogger(__name__)
 
     async def sync_sets(self) -> list[Set]:
@@ -31,7 +24,7 @@ class SyncService:
         self.logger.info("Synchronising all Pokémon sets.")
 
         api_response = await self.pokemontcgapi.get_sets()
-        database_sets = self.set_operations.get_all_sets()
+        database_sets = self.database.sets.get_all()
         db_set_ids = [item.id for item in database_sets]
 
         if not api_response["success"]:
@@ -43,7 +36,7 @@ class SyncService:
                 if new_set.id == 0 and new_set.sync_complete == 9:
                     return database_sets
 
-                if not self.set_operations.add(new_set.get_dict()):
+                if not self.database.sets.add(new_set.get_dict()):
                     return database_sets
 
                 database_sets.append(new_set)
@@ -76,10 +69,12 @@ class SyncService:
         if response["data"] is None:
             return False
 
-        return self.card_operations.save_image(
-            card_id,
-            response["data"]["image_data"],
-            response["data"]["content_type"],
+        return self.database.images.add(
+            {
+                "card_id": card_id,
+                "image_data": response["data"]["image_data"],
+                "content_type": response["data"]["content_type"],
+            }
         )
 
     async def sync_card_variants(self, card_id: int, rarity: str) -> bool:
@@ -95,11 +90,9 @@ class SyncService:
             return False
 
         if rarity not in rarities:
-            if not self.card_operations.add_variant(card_id, "Holofoil"):
-                # Remove any variants already added if the synchronisation fails.
-                self.card_operations.delete_variants(card_id)
-                return False
-            return True
+            return self.database.variants.add(
+                {"card_id": card_id, "variant": "Holofoil"}
+            )
 
         data = api_response.get("data")
         if not isinstance(data, list):
@@ -121,7 +114,7 @@ class SyncService:
             if not variant.get("printing"):
                 current_variant = "Normal"
             else:
-                current_variant = variant["printing"]
+                current_variant = str(variant["printing"])
 
             if current_variant == "Foil":
                 current_variant = "Holofoil"
@@ -129,11 +122,13 @@ class SyncService:
             if current_variant in variants:
                 continue
 
-            variants.append(str(current_variant))
+            variants.append(current_variant)
 
-            if not self.card_operations.add_variant(card_id, str(current_variant)):
+            if not self.database.variants.add(
+                {"card_id": card_id, "variant": current_variant}
+            ):
                 # Remove any variants already added if the synchronisation fails.
-                self.card_operations.delete_variants(card_id)
+                self.database.variants.delete_all_by_card_id(card_id)
                 return False
 
         self.logger.info(
@@ -163,7 +158,7 @@ class SyncService:
         """Synchronise the cards, images and variants belonging to a set."""
         self.logger.info(f"Start synchronising the cards of set '{db_set.id}'.")
 
-        cards_in_db = self.card_operations.get_cards_amount(db_set.id)
+        cards_in_db = self.database.cards.get_amount_in_set(db_set.id)
 
         start_page = (
             max(1, (cards_in_db - 2) // 100 + 1) if not within_sync_window else 1
@@ -174,30 +169,30 @@ class SyncService:
             return False
 
         if within_sync_window:
-            if not self.set_operations.delete("id", {"id": db_set.id}):
+            if not self.database.sets.delete({"id": db_set.id}):
                 return False
 
-            if not self.set_operations.add(db_set.get_dict()):
+            if not self.database.sets.add(db_set.get_dict()):
                 return False
 
         for card in api_response["data"]:
             if not self.is_card(card):
                 continue
 
-            if self.card_operations.get_card_by_id(card["id"]) is None:
+            if self.database.cards.get_by_card_id(card["id"]) is None:
                 new_card = Card.from_api_to_Card(card, db_set.id)
 
                 if new_card.id == 0 and new_card.set_id == 0:
                     return False
 
-                if not self.card_operations.add_card(new_card):
+                if not self.database.cards.add(new_card.get_dict()):
                     return False
 
-            if not self.card_operations.get_image(card["id"]):
+            if not self.database.images.get_by_card_id(card["id"]):
                 if not await self.sync_image(card["image_url"], card["id"]):
                     return False
 
-            if not self.card_operations.get_variants(card["id"]):
+            if not self.database.variants.get_by_card_id(card["id"]):
                 if not await self.sync_card_variants(card["id"], card["rarity"]):
                     return False
 
@@ -207,7 +202,7 @@ class SyncService:
     async def sync_set(self, set_id: int) -> Set | None:
         """Synchronise a complete set, including its cards, images and variants."""
 
-        db_set = self.set_operations.get_set_by_id(set_id)
+        db_set = self.database.sets.get_by_id(set_id)
         if db_set is None:
             self.logger.info(
                 f"Unable to find set '{set_id}' in the database. Attempting to get set info."
@@ -218,7 +213,7 @@ class SyncService:
             if db_set is None:
                 return None
 
-            if not self.set_operations.add(db_set.get_dict()):
+            if not self.database.sets.add(db_set.get_dict()):
                 return None
 
         if db_set.card_count is None:
@@ -227,7 +222,7 @@ class SyncService:
             if db_set == None:
                 return None
 
-            if not (self.set_operations.update(db_set.get_dict())):
+            if not (self.database.sets.update(db_set.get_dict())):
                 return None
 
         within_sync_window = False
@@ -245,7 +240,7 @@ class SyncService:
 
         if not within_sync_window:
             db_set.sync_complete = 1
-            if not self.set_operations.update(db_set.get_dict()):
+            if not self.database.sets.update(db_set.get_dict()):
                 return None
 
         self.logger.info(f"Successfully added set '{set_id}'!")
