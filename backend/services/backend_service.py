@@ -1,11 +1,11 @@
 from logging import getLogger
 from sqlite3 import Connection
 
-from backend.api.pokemon_tcg_api import PokemonTCGAPI
+from backend.services.pokemon_tcg_api_service import PokemonTCGAPI
 from backend.database.db_operations import DatabaseOperations
 from backend.services.document_generation_service import DocumentGeneration
 from backend.services.image_generation_service import ImageGeneration
-from backend.services.image_utils import ImageUtils
+from backend.functions.folder_functions import remove_set_images, get_images_in_set_folder
 from backend.services.sync_service import SyncService
 
 
@@ -16,7 +16,6 @@ class Backend:
         self.sync_service = SyncService(self.database, self.PokemonTCGAPI)
         self.image_generation_service = ImageGeneration(self.database)
         self.document_generation_service = DocumentGeneration()
-        self.image_utils = ImageUtils()
         self.logger = getLogger(__name__)
 
     def get_years(self):
@@ -53,10 +52,10 @@ class Backend:
             return
 
         if not self.image_generation_service.generate_images_for_set(current_set.id):
-            ImageUtils().remove_set_images(current_set.name)
+            remove_set_images(current_set.name)
             return
 
-        image_paths = self.image_utils.get_images_in_set_folder(current_set.name)
+        image_paths = get_images_in_set_folder(current_set.name)
         if not image_paths:
             return
 

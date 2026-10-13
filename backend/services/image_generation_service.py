@@ -5,8 +5,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
 from backend.database.db_operations import Card, DatabaseOperations
-from backend.services.image_utils import ImageUtils
-from backend.services.name_service import sanitize_filename
+from backend.functions.folder_functions import get_images_in_set_folder
+from backend.functions.name_functions import sanitize_filename
 
 
 class ImageGeneration:
@@ -50,7 +50,7 @@ class ImageGeneration:
             return ".fail"
 
     def get_file_prefix(self, set_name: str) -> str:
-        file_amount = str(len(ImageUtils().get_images_in_set_folder(set_name)))
+        file_amount = str(len(get_images_in_set_folder(set_name)))
         match len(file_amount):
             case 1:
                 return f"0000{file_amount}"

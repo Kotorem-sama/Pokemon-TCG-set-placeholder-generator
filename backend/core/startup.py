@@ -1,95 +1,59 @@
-from logging import WARNING, FileHandler, Logger, StreamHandler, basicConfig, getLogger
+from logging import WARNING, FileHandler, getLogger, StreamHandler, basicConfig
 from pathlib import Path
-from subprocess import CalledProcessError, run
-from sys import executable
 from sys import exit as exit_program
 
 from pytest import main
 
-from backend.database.db_setup import DatabaseSetup as Database
+from backend.database.db_setup import DatabaseSetup
 
 
-def startup():
+def startup(unit_tests: bool = True):
     """Set up logging, dependencies and the database before starting the application."""
-    logger = setup_logging()
+    setup_logging()
+    setup_database()
 
-    # tests()
-
-    if not install_dependencies(logger):
-        exit_program()
-
-    if not setup_database(logger):
-        exit_program()
+    if unit_tests:
+        tests()
 
 
-def setup_logging() -> Logger:
+def setup_logging():
     """Configure application logging for both the console and log file."""
     basicConfig(
         level=WARNING,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             FileHandler("pokemon_tcg_sync.log"),
-            StreamHandler(),  # Console output
+            StreamHandler(),
         ],
     )
-    return getLogger(__name__)
 
-
-def install_dependencies(logger: Logger) -> bool:
-    """Install the project's dependencies from requirements.txt."""
-    BACKEND_DIR: Path = Path(__file__).resolve().parent.parent
-    logger.info("Installing dependencies...")
-
-    try:
-        run(
-            [
-                executable,
-                "-m",
-                "pip",
-                "install",
-                "-r",
-                str(BACKEND_DIR / "requirements.txt"),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        logger.info("Installed dependencies succesfully.")
-        return True
-
-    except CalledProcessError as error:
-        logger.error(f"Failed to install dependencies: {error.stderr}")
-        return False
-
-
-def setup_database(logger: Logger) -> Database | None:
+def setup_database() -> DatabaseSetup:
     """Create and validate the application's SQLite database."""
-    BACKEND_DIR: Path = Path(__file__).resolve().parent.parent
-    DATABASE_DIR = BACKEND_DIR / "database"
-    DATABASE_PATH = DATABASE_DIR / "pokemon_cards.db"
+    logger = getLogger(__name__)
+    database_dir = Path(__file__).resolve().parent.parent / "database"
+    database_path = database_dir / "pokemon_cards.db"
+    
+    logger.info(f"Setting up the database. Database directory is set to {database_dir}.")    
+    database_dir.mkdir(parents=True, exist_ok=True)
 
-    DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-
-    logger.info("Setting up the database.")
-
-    db = Database(str(DATABASE_PATH))
+    db = DatabaseSetup(str(database_path))
     db.initialise_db()
-    if not db.integrity_check():
-        logger.error("Failed to initialise database. Please try again later.")
-        Path.unlink(DATABASE_PATH)
+    logger.info("Database initialisation complete.")
 
-        return None
+    if not db.integrity_check():
+        logger.error("Database integrity check failed.")
+        db.db_context.close()
+        database_path.unlink(missing_ok=True)
+        exit_program(1)
 
     logger.info("Initialised the database succesfully!")
     return db
 
-
-def get_database() -> Database:
-    DATABASE_PATH = (
+def get_database() -> DatabaseSetup:
+    database_path = (
         Path(__file__).resolve().parent.parent / "database" / "pokemon_cards.db"
     )
-    return Database(str(DATABASE_PATH))
-
+    return DatabaseSetup(str(database_path))
 
 def tests():
     """Run the project's unit tests and stop the application on failure."""
@@ -103,6 +67,7 @@ def tests():
 
     if test_result != 0:
         logger.error(f"Unit tests came back with an error: {test_result}")
-        exit(1)
+        exit_program(1)
 
     logger.info("Tests have successfully been conducted!")
+    

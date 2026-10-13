@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
-from backend.api.pokemon_tcg_api import PokemonTCGAPI
+from backend.services.pokemon_tcg_api_service import PokemonTCGAPI
 from backend.database.db_operations import Card, DatabaseOperations, Set
 
 

@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen.canvas import Canvas
 
-from backend.services.image_utils import ImageUtils
+from backend.functions.folder_functions import remove_set_images
 
 
 class DocumentGeneration:
@@ -169,7 +169,7 @@ class DocumentGeneration:
             Path(temp_path).rename(final_path)
 
             self.logger.info("PDF generated successfully: %s", final_path)
-            ImageUtils().remove_set_images(set_name)
+            remove_set_images(set_name)
         except OSError:
             # Clean up temp file on failure
             try:
@@ -177,7 +177,7 @@ class DocumentGeneration:
             except OSError:
                 self.logger.warning("Could not delete temp file: %s", temp_path)
             self.logger.exception("Failed to generate PDF")
-            ImageUtils().remove_set_images(set_name)
+            remove_set_images(set_name)
         except Exception:
             # Clean up temp file on any other error
             try:
@@ -185,4 +185,4 @@ class DocumentGeneration:
             except OSError:
                 self.logger.warning("Could not delete temp file: %s", temp_path)
             self.logger.exception("Unexpected error during PDF generation")
-            ImageUtils().remove_set_images(set_name)
+            remove_set_images(set_name)
