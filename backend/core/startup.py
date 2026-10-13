@@ -28,7 +28,7 @@ def setup_logging():
     )
 
 
-def setup_database() -> DatabaseSetup:
+def setup_database():
     """Create and validate the application's SQLite database."""
     logger = getLogger(__name__)
     database_dir = Path(__file__).resolve().parent.parent / "database"
@@ -50,7 +50,7 @@ def setup_database() -> DatabaseSetup:
         exit_program(1)
 
     logger.info("Initialised the database succesfully!")
-    return db
+    db.db_context.close()
 
 
 def get_database() -> DatabaseSetup:

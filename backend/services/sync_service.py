@@ -179,7 +179,7 @@ class SyncService:
             if not self.is_card(card):
                 continue
 
-            if self.database.cards.get_by_card_id(card["id"]) is None:
+            if self.database.cards.get_by_id(card["id"]) is None:
                 new_card = Card.from_api_to_Card(card, db_set.id)
 
                 if new_card.id == 0 and new_card.set_id == 0:

@@ -298,11 +298,11 @@ class CardOperations(DatabaseOperationsBaseClass):
     def get_amount_in_set(self, set_id: int) -> int:
         """Retrieve amount of cards that are in a set."""
         card_amount = self.get(
-            {"set_id": set_id}, "COUNT(*)", where_clause="set_id = (:set_id)"
-        )[0]["COUNT(*)"]
-        return 0 if not card_amount or not isinstance(card_amount, int) else card_amount
+            {"set_id": set_id}, "COUNT(*) AS total", where_clause="set_id = (:set_id)"
+        )[0]
+        return 0 if not card_amount["total"] or not isinstance(card_amount["total"], int) else card_amount["total"]
 
-    def get_by_card_id(self, card_id: int) -> Card | None:
+    def get_by_id(self, card_id: int) -> Card | None:
         """Retrieve a card using its ID."""
         current_card = self.__cast_as_cards(
             self.get({"id": card_id}, "*", where_clause="id = :id")
@@ -357,8 +357,8 @@ class CardVariantsOperations(DatabaseOperationsBaseClass):
         variants = self.get(
             {"set_id": set_id},
             "DISTINCT variant",
-            "JOIN cards ON card_variants.card_id = cards.id",
-            "cards.set_id = :set_id",
+            join_clause="JOIN cards ON card_variants.card_id = cards.id",
+            where_clause="cards.set_id = :set_id",
             fetch_all=True,
         )
         return [str(variant["variant"]) for variant in variants]
@@ -377,7 +377,7 @@ class CardImageOperations(DatabaseOperationsBaseClass):
 
     def get_by_card_id(self, card_id: int) -> tuple[bytes, str] | None:
         image = self.get(
-            {"card_id": card_id}, "image_data, content_type", "card_id = :card_id"
+            {"card_id": card_id}, "image_data, content_type", where_clause="card_id = :card_id"
         )[0]
         if not image:
             return None
