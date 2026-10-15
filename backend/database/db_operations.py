@@ -92,9 +92,6 @@ class DatabaseOperationsBaseClass:
                 else [row for row in [cursor.fetchone()] if row]
             )
             return [dict(row) for row in result_rows]
-        except db_error:
-            self.logger.exception("Failed to get information from database.")
-            return []
         finally:
             cursor.close()
 
@@ -121,7 +118,6 @@ class DatabaseOperationsBaseClass:
                 new_entry,
             )
 
-            self.context.commit()
             self.logger.info(
                 f"Successfully added '{new_entry}' to the table '{self.table_name}'!"
             )
@@ -131,6 +127,7 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to insert '{new_entry}' into the table '{self.table_name}': {error}."
             )
+            self.context.rollback()
             return False
 
         finally:
@@ -170,6 +167,7 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to update '{update_entry}' in table '{self.table_name}': {error}."
             )
+            self.context.rollback()
             return False
 
         finally:
@@ -217,6 +215,7 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to delete '{values}' from table '{self.table_name}': {error}."
             )
+            self.context.rollback()
             return False
         finally:
             cursor.close()

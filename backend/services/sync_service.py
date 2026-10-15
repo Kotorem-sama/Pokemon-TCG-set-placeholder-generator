@@ -169,6 +169,8 @@ class SyncService:
             return False
 
         if within_sync_window:
+            # Idea. If a set needs a resync, i should store the previous state somewhere
+            # before deleting it, or store the new data elsewhere temporarily.
             if not self.database.sets.delete({"id": db_set.id}):
                 return False
 
@@ -195,6 +197,9 @@ class SyncService:
             if not self.database.variants.get_by_card_id(card["id"]):
                 if not await self.sync_card_variants(card["id"], card["rarity"]):
                     return False
+                
+            self.database.cards.context.commit()
+        
 
         self.logger.info(f"Finished synchronising cards of set '{db_set.id}'!")
         return True
