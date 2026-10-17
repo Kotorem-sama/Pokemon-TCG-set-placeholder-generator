@@ -215,8 +215,10 @@ class SyncService:
                 return False
 
         if within_sync_window:
+            own_database.sets.delete({"id": db_set.id})
             self.database.context.backup(own_database.context)
             self.database = own_database
+            self.database.context.commit()
 
         self.logger.info(f"Finished synchronising cards of set '{db_set.id}'!")
         return True

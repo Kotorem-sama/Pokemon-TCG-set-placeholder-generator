@@ -57,6 +57,7 @@ def get_database(file_name: str) -> DatabaseSetup:
     database_path = (
         Path(__file__).resolve().parent.parent / "database" / f"{file_name}.db"
     )
+    DatabaseSetup(str(database_path)).initialise_db()
     return DatabaseSetup(str(database_path))
 
 
