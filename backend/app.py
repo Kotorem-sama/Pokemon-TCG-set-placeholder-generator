@@ -33,7 +33,7 @@ def health_check():
 
 @app.get("/sets/years")
 async def get_years():
-    db = get_database()
+    db = get_database("pokemon_cards")
     backend_service = Backend(db.db_context)
 
     try:
@@ -46,7 +46,7 @@ async def get_years():
 
 @app.get("/sets/{year}")
 def get_sets_by_year(year: int):
-    db = get_database()
+    db = get_database("pokemon_cards")
     backend_service = Backend(db.db_context)
 
     try:
@@ -59,7 +59,7 @@ def get_sets_by_year(year: int):
 
 @app.get("/sets/{set_id}/variants")
 def get_variants_in_set(set_id: int):
-    db = get_database()
+    db = get_database("pokemon_cards")
     backend_service = Backend(db.db_context)
 
     try:
@@ -72,7 +72,7 @@ def get_variants_in_set(set_id: int):
 
 @app.get("/sets/{set_id}/rarities")
 def get_rarities_in_set(set_id: int):
-    db = get_database()
+    db = get_database("pokemon_cards")
     backend_service = Backend(db.db_context)
 
     try:

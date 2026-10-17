@@ -3,6 +3,7 @@ from logging import getLogger
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
+from backend.core.startup import get_database
 from backend.database.db_operations import Card, DatabaseOperations, Set
 from backend.services.pokemon_tcg_api_service import PokemonTCGAPI
 
@@ -39,6 +40,7 @@ class SyncService:
                 if not self.database.sets.add(new_set.get_dict()):
                     return database_sets
 
+                self.database.context.commit()
                 database_sets.append(new_set)
 
         self.logger.info("Syncing Pokémon sets complete!")
@@ -168,38 +170,53 @@ class SyncService:
         if not api_response["success"]:
             return False
 
+        own_database = self.database
         if within_sync_window:
-            # Idea. If a set needs a resync, i should store the previous state somewhere
-            # before deleting it, or store the new data elsewhere temporarily.
-            if not self.database.sets.delete({"id": db_set.id}):
-                return False
-
-            if not self.database.sets.add(db_set.get_dict()):
-                return False
+            self.database = DatabaseOperations(get_database("pokemon_cards_temp").db_context)
 
         for card in api_response["data"]:
             if not self.is_card(card):
                 continue
 
-            if self.database.cards.get_by_id(card["id"]) is None:
-                new_card = Card.from_api_to_Card(card, db_set.id)
+            retry_count = 0
+            success = False
 
-                if new_card.id == 0 and new_card.set_id == 0:
-                    return False
+            while retry_count < 3 and not success:
+                if self.database.cards.get_by_id(card["id"]) is None:
+                    new_card = Card.from_api_to_Card(card, db_set.id)
 
-                if not self.database.cards.add(new_card.get_dict()):
-                    return False
+                    if new_card.id == 0 and new_card.set_id == 0:
+                        retry_count += 1
+                        continue
 
-            if not self.database.images.get_by_card_id(card["id"]):
-                if not await self.sync_image(card["image_url"], card["id"]):
-                    return False
+                    if not self.database.cards.add(new_card.get_dict()):
+                        retry_count += 1
+                        continue
 
-            if not self.database.variants.get_by_card_id(card["id"]):
-                if not await self.sync_card_variants(card["id"], card["rarity"]):
-                    return False
-                
-            self.database.cards.context.commit()
-        
+                if not self.database.images.get_by_card_id(card["id"]):
+                    if not await self.sync_image(card["image_url"], card["id"]):
+                        retry_count += 1
+                        continue
+
+                if not self.database.variants.get_by_card_id(card["id"]):
+                    if not await self.sync_card_variants(card["id"], card["rarity"]):
+                        retry_count += 1
+                        continue
+
+                self.database.context.commit()
+                success = True
+
+            if within_sync_window and not success:
+                #remove temporary database if the sync was not successful.
+                self.database = own_database
+            
+            if not success:
+                self.database.context.rollback()
+                return False
+
+        if within_sync_window:
+            self.database.context.backup(own_database.context)
+            self.database = own_database
 
         self.logger.info(f"Finished synchronising cards of set '{db_set.id}'!")
         return True

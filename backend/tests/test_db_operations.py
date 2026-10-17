@@ -71,9 +71,7 @@ def test_delete_missing_entry_returns_false(database: DatabaseOperations):
     assert database.sets.delete({"id": 999}) is False
 
 
-def test_delete_rejects_unknown_column(
-    database: DatabaseOperations, test_set: Set
-):
+def test_delete_rejects_unknown_column(database: DatabaseOperations, test_set: Set):
     database.sets.add(test_set.get_dict())
 
     assert database.sets.delete({"nonexistent": 1}) is False

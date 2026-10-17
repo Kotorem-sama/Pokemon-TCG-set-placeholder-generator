@@ -36,7 +36,7 @@ class PokemonTCGAPI:
                 "All API keys have run out of tokens."
                 "Please wait until tomorrow to try again, or add a new key in the .env file."
             )
-            return {"success": False}
+            return {"success": False, "error_code": 429}
 
         headers = {} if headers is None else headers
         headers["X-API-Key"] = self.api_keys[self.key_number]

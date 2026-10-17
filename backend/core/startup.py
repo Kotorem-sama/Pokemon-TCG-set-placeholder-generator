@@ -53,9 +53,9 @@ def setup_database():
     db.db_context.close()
 
 
-def get_database() -> DatabaseSetup:
+def get_database(file_name: str) -> DatabaseSetup:
     database_path = (
-        Path(__file__).resolve().parent.parent / "database" / "pokemon_cards.db"
+        Path(__file__).resolve().parent.parent / "database" / f"{file_name}.db"
     )
     return DatabaseSetup(str(database_path))
 

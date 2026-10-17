@@ -18,6 +18,7 @@ class DatabaseOperations:
         self.cards = CardOperations(context)
         self.variants = CardVariantsOperations(context)
         self.images = CardImageOperations(context)
+        self.context = context
 
 
 class DatabaseOperationsBaseClass:
@@ -127,7 +128,6 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to insert '{new_entry}' into the table '{self.table_name}': {error}."
             )
-            self.context.rollback()
             return False
 
         finally:
@@ -167,7 +167,6 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to update '{update_entry}' in table '{self.table_name}': {error}."
             )
-            self.context.rollback()
             return False
 
         finally:
@@ -215,7 +214,6 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to delete '{values}' from table '{self.table_name}': {error}."
             )
-            self.context.rollback()
             return False
         finally:
             cursor.close()
