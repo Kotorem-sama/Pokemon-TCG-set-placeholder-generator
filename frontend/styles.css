@@ -1,0 +1,353 @@
+
+/* =========================
+   Theme and global styles
+   ========================= */
+
+:root {
+    --color-background: #f3f5fa;
+    --color-surface: #ffffff;
+    --color-primary: #3868e8;
+    --color-primary-hover: #2854c7;
+    --color-text: #202b40;
+    --color-text-muted: #69758a;
+    --color-border: #dce2ed;
+    --color-disabled: #e9edf4;
+    --color-success: #20835b;
+    --color-error: #c53b43;
+
+    --radius-small: 8px;
+    --radius-medium: 14px;
+    --radius-large: 20px;
+
+    --shadow-card: 0 5px 20px rgb(31 48 78 / 6%);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+button,
+select,
+input {
+    font: inherit;
+}
+
+button,
+select,
+input[type="checkbox"] {
+    accent-color: var(--color-primary);
+}
+
+button,
+select {
+    cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+fieldset:disabled {
+    cursor: not-allowed;
+}
+
+
+/* =========================
+   Page header
+   ========================= */
+
+header {
+    padding: 48px 24px;
+    background: linear-gradient(135deg, #182b52, #294f9d);
+    color: #ffffff;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0 0 12px;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.2;
+}
+
+header p {
+    max-width: 620px;
+    margin: 0 auto;
+    color: #e0e8ff;
+    font-size: 1.05rem;
+}
+
+
+/* =========================
+   Main layout
+   ========================= */
+
+main {
+    width: min(100% - 32px, 800px);
+    margin: 36px auto;
+}
+
+#set-lister-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Each form section becomes a separate card. */
+#set-lister-form > section {
+    padding: 28px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-card);
+}
+
+section h2 {
+    margin: 0 0 8px;
+    font-size: 1.3rem;
+    font-weight: 750;
+    line-height: 1.4;
+}
+
+section > p {
+    margin: 0 0 20px;
+    color: var(--color-text-muted);
+}
+
+
+/* =========================
+   Dropdowns
+   ========================= */
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.form-group label {
+    font-size: 0.95rem;
+    font-weight: 650;
+}
+
+select {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 14px;
+    background-color: #ffffff;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+select:disabled {
+    background-color: var(--color-disabled);
+    color: var(--color-text-muted);
+}
+
+
+/* =========================
+   Rarity and variant options
+   ========================= */
+
+fieldset {
+    min-width: 0;
+    margin: 20px 0 0;
+    padding: 18px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-medium);
+}
+
+fieldset legend {
+    padding: 0 8px;
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+fieldset:disabled {
+    color: var(--color-text-muted);
+    background-color: #fafbfe;
+}
+
+.empty-message {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+/*
+ * JavaScript can put generated checkbox labels inside these fieldsets.
+ * The styles below also support labels that wrap each checkbox.
+ */
+fieldset label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin: 5px 12px 5px 0;
+    padding: 7px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    font-size: 0.92rem;
+    cursor: pointer;
+}
+
+fieldset label:hover {
+    border-color: var(--color-primary);
+    background-color: #f4f7ff;
+}
+
+input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+
+/* =========================
+   Buttons
+   ========================= */
+
+button {
+    min-height: 48px;
+    padding: 12px 22px;
+    border: none;
+    border-radius: var(--radius-small);
+    font-weight: 700;
+    transition:
+        background-color 150ms ease,
+        transform 150ms ease,
+        box-shadow 150ms ease;
+}
+
+#generate-button {
+    width: 100%;
+    margin-top: 8px;
+    background-color: var(--color-primary);
+    color: #ffffff;
+}
+
+#generate-button:not(:disabled):hover {
+    background-color: var(--color-primary-hover);
+    box-shadow: 0 4px 12px rgb(56 104 232 / 25%);
+    transform: translateY(-1px);
+}
+
+#generate-button:disabled {
+    background-color: #b9c5df;
+    color: #f7f8fc;
+}
+
+
+/* =========================
+   Focus and interaction
+   ========================= */
+
+select:focus-visible,
+button:focus-visible,
+input:focus-visible {
+    outline: 3px solid rgb(56 104 232 / 35%);
+    outline-offset: 3px;
+}
+
+select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgb(56 104 232 / 10%);
+}
+
+
+/* =========================
+   Status messages
+   ========================= */
+
+#status-message {
+    margin: 14px 0 0;
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+}
+
+#status-message:empty {
+    display: none;
+}
+
+#status-message.success {
+    color: var(--color-success);
+}
+
+#status-message.error {
+    color: var(--color-error);
+}
+
+
+/* =========================
+   Footer
+   ========================= */
+
+footer {
+    padding: 20px;
+    color: var(--color-text-muted);
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+footer p {
+    margin: 0;
+}
+
+
+/* =========================
+   Responsive layout
+   ========================= */
+
+@media (max-width: 600px) {
+    header {
+        padding: 36px 20px;
+    }
+
+    main {
+        width: calc(100% - 24px);
+        margin: 20px auto;
+    }
+
+    #set-lister-form > section {
+        padding: 20px;
+        border-radius: var(--radius-medium);
+    }
+
+    section h2 {
+        font-size: 1.15rem;
+    }
+
+    fieldset {
+        padding: 12px;
+    }
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+    }
+}

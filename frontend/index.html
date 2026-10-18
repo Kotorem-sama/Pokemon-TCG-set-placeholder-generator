@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Pokémon TCG Set Lister</title>
+    <meta
+        name="description"
+        content="Generate printable Pokémon TCG set lists for your binder."
+    >
+
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+
+<body>
+    <header>
+        <h1>Pokémon TCG Set Lister</h1>
+        <p>
+            Create printable set lists for your Pokémon card binder.
+            Choose a set, select the cards you want, and generate your PDF.
+        </p>
+    </header>
+
+    <main>
+        <form id="set-lister-form">
+            <section aria-labelledby="set-selection-heading">
+                <h2 id="set-selection-heading">1. Choose a set</h2>
+
+                <div class="form-group">
+                    <label for="year-select">Release year</label>
+                    <select id="year-select" name="year" required>
+                        <option value="">Select a year...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="set-select">Expansion set</label>
+                    <select
+                        id="set-select"
+                        name="set"
+                        required
+                        disabled
+                    >
+                        <option value="">Select a year first...</option>
+                    </select>
+                </div>
+            </section>
+
+            <section aria-labelledby="rarity-heading">
+                <h2 id="rarity-heading">2. Select rarities</h2>
+                <p>Choose which card rarities to include.</p>
+
+                <fieldset id="rarity-options" disabled>
+                    <legend>Available rarities</legend>
+
+                    <p class="empty-message">
+                        Select a set to load its rarities.
+                    </p>
+                </fieldset>
+            </section>
+
+            <section aria-labelledby="variant-heading">
+                <h2 id="variant-heading">3. Select card variants</h2>
+                <p>
+                    Choose which versions of the selected cards to include.
+                </p>
+
+                <fieldset id="variant-options" disabled>
+                    <legend>Available variants</legend>
+
+                    <p class="empty-message">
+                        Select a set to load its variants.
+                    </p>
+                </fieldset>
+            </section>
+
+            <section aria-labelledby="generation-heading">
+                <h2 id="generation-heading">4. Generate your set list</h2>
+                <p>
+                    Your PDF will contain printable card images
+                    arranged for your binder.
+                </p>
+
+                <button
+                    id="generate-button"
+                    type="submit"
+                    disabled
+                >
+                    Generate PDF
+                </button>
+
+                <p
+                    id="status-message"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+            </section>
+        </form>
+    </main>
+
+    <footer>
+        <p>Pokémon TCG Set Lister</p>
+    </footer>
+</body>
+</html>
