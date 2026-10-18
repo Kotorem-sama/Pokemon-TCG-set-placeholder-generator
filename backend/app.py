@@ -77,3 +77,27 @@ def get_rarities_in_set(set_id: int):
         backend_service.database.database.context.close()
 
     return set_rarities if set_rarities else []
+
+
+@app.post("/sets/{set_id}/sync")
+async def sync_set(set_id: int):
+    backend_service = Backend(get_database("pokemon_cards"))
+
+    try:
+        result = await backend_service.sync_service.sync_set(set_id)
+    finally:
+        backend_service.database.database.context.close()
+
+    return {"success": result}
+
+
+@app.post("/sets/sync_all")
+async def sync_all_sets():
+    backend_service = Backend(get_database("pokemon_cards"))
+
+    try:
+        result = await backend_service.sync_service.sync_sets()
+    finally:
+        backend_service.database.database.context.close()
+
+    return {"success": result}
