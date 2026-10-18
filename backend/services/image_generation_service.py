@@ -363,7 +363,9 @@ class ImageGeneration:
             )
             return False
 
-    def generate_images_for_card(self, current_card: Card, set_name: str, variants: list[str]) -> bool:
+    def generate_images_for_card(
+        self, current_card: Card, set_name: str, variants: list[str]
+    ) -> bool:
         """
         Generate images for all variants of a card.
 
@@ -396,6 +398,9 @@ class ImageGeneration:
             else:
                 self.logger.info(f"Processing actual image for {current_card.name}")
                 for variant in card_variants:
+                    if variant not in variants:
+                        continue
+
                     if not self.image_processor(
                         card_image, current_card, set_name, variant
                     ):
@@ -407,7 +412,9 @@ class ImageGeneration:
             )
             return False
 
-    def generate_images_for_set(self, set_id: int, rarities: list[str], variants: list[str]) -> bool:
+    def generate_images_for_set(
+        self, set_id: int, rarities: list[str], variants: list[str]
+    ) -> bool:
         """
         Generate images for all cards in a Pokémon set.
 

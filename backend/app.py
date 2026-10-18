@@ -101,3 +101,17 @@ async def sync_all_sets():
         backend_service.database.database.context.close()
 
     return {"success": result}
+
+
+@app.post("/sets/{set_id}/document")
+async def generate_document(set_id: int, options: dict[str, list[str]]):
+    backend_service = Backend(get_database("pokemon_cards"))
+
+    try:
+        result = await backend_service.get_document(
+            set_id, options["rarities"], options["variants"]
+        )
+    finally:
+        backend_service.database.database.context.close()
+
+    return {"success": result}
