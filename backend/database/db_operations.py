@@ -2,6 +2,7 @@ from logging import getLogger
 from sqlite3 import Connection, Row
 from sqlite3 import Error as db_error
 
+from backend.database.db_setup import Database
 from backend.models import Card, Set
 
 
@@ -13,12 +14,12 @@ class DatabaseOperations:
     All of them share the same SQLite connection.
     """
 
-    def __init__(self, context: Connection) -> None:
-        self.sets = SetOperations(context)
-        self.cards = CardOperations(context)
-        self.variants = CardVariantsOperations(context)
-        self.images = CardImageOperations(context)
-        self.context = context
+    def __init__(self, database: Database) -> None:
+        self.database = database
+        self.sets = SetOperations(database.context)
+        self.cards = CardOperations(database.context)
+        self.variants = CardVariantsOperations(database.context)
+        self.images = CardImageOperations(database.context)
 
 
 class DatabaseOperationsBaseClass:

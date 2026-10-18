@@ -1,7 +1,7 @@
 from logging import getLogger
-from sqlite3 import Connection
 
 from backend.database.db_operations import DatabaseOperations
+from backend.database.db_setup import Database
 from backend.functions.folder_functions import (
     get_images_in_set_folder,
     remove_set_images,
@@ -13,8 +13,8 @@ from backend.services.sync_service import SyncService
 
 
 class Backend:
-    def __init__(self, db_context: Connection) -> None:
-        self.database = DatabaseOperations(db_context)
+    def __init__(self, database: Database) -> None:
+        self.database = DatabaseOperations(database)
         self.PokemonTCGAPI = PokemonTCGAPI()
         self.sync_service = SyncService(self.database, self.PokemonTCGAPI)
         self.image_generation_service = ImageGeneration(self.database)

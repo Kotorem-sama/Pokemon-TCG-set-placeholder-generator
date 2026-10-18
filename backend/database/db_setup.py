@@ -1,15 +1,26 @@
 from logging import getLogger
+from pathlib import Path
 from sqlite3 import Connection, Row, connect
 
 
-class DatabaseSetup:
+class Database:
     """Handles SQLite database connections, initialization and maintenance."""
 
-    def __init__(self, database_path: str):
+    def __init__(self, database_name: str):
         """Initialize the database setup with the database file path."""
-        self.database_path = database_path
+        self.database_path = Path(__file__).resolve().parent / f"{database_name}.db"
         self.logger = getLogger(__name__)
-        self.db_context = self.__connect_db()
+        self.context = self.__connect_db()
+
+    def __del__(self):
+        """Ensure the database connection is closed when the object is deleted. Then the database file is removed."""
+        self.close_db()
+        self.database_path.unlink(missing_ok=True)
+
+    def close_db(self):
+        """Close the connection to the SQLite database."""
+        if self.context:
+            self.context.close()
 
     def __connect_db(self) -> Connection:
         """Create and configure a connection to the SQLite database."""
@@ -22,7 +33,7 @@ class DatabaseSetup:
         """Check the integrity of the SQLite database."""
         self.logger.info("Starting a database integrity check.")
 
-        cursor = self.db_context.cursor()
+        cursor = self.context.cursor()
 
         check = cursor.execute("PRAGMA integrity_check").fetchone()
         cursor.close()
@@ -36,7 +47,9 @@ class DatabaseSetup:
 
     def initialise_db(self):
         """Create the database tables if they do not already exist."""
-        cursor = self.db_context.cursor()
+        self.database_path.parent.mkdir(parents=True, exist_ok=True)
+
+        cursor = self.context.cursor()
 
         cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
         id INTEGER PRIMARY KEY,
@@ -71,17 +84,15 @@ class DatabaseSetup:
         FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
         )""")
 
-        self.db_context.commit()
+        self.context.commit()
 
-    def reset_db(self, db_context: Connection, databases: list[str] | None = None):
+    def reset_db(self, databases: list[str] | None = None):
         """Drop the selected database tables and recreate the database structure."""
-        cursor = db_context.cursor()
+        cursor = self.context.cursor()
         if databases is None:
             databases = ["card_images", "card_variants", "cards", "sets"]
 
         for table in databases:
-            cursor.execute(f"""DROP TABLE IF EXISTS {table}""")
+            cursor.execute(f"""DELETE FROM {table}""")
 
-        db_context.commit()
-
-        self.initialise_db()
+        self.context.commit()

@@ -33,51 +33,47 @@ def health_check():
 
 @app.get("/sets/years")
 async def get_years():
-    db = get_database("pokemon_cards")
-    backend_service = Backend(db.db_context)
+    backend_service = Backend(get_database("pokemon_cards"))
 
-    try:
-        years = backend_service.get_years()
-    finally:
-        db.db_context.close()
+    # try:
+    years = backend_service.get_years()
+    # finally:
+    #     backend_service.database.database.context.close()
 
-    return years
+    return years if years else ["aa"]
 
 
 @app.get("/sets/{year}")
 def get_sets_by_year(year: int):
-    db = get_database("pokemon_cards")
-    backend_service = Backend(db.db_context)
+    backend_service = Backend(get_database("pokemon_cards"))
 
     try:
         sets_in_year = backend_service.get_sets_in_year(year)
     finally:
-        db.db_context.close()
+        backend_service.database.database.context.close()
 
-    return sets_in_year
+    return sets_in_year if sets_in_year else []
 
 
 @app.get("/sets/{set_id}/variants")
 def get_variants_in_set(set_id: int):
-    db = get_database("pokemon_cards")
-    backend_service = Backend(db.db_context)
+    backend_service = Backend(get_database("pokemon_cards"))
 
     try:
         set_variants = backend_service.get_variants_in_set(set_id)
     finally:
-        db.db_context.close()
+        backend_service.database.database.context.close()
 
-    return set_variants
+    return set_variants if set_variants else []
 
 
 @app.get("/sets/{set_id}/rarities")
 def get_rarities_in_set(set_id: int):
-    db = get_database("pokemon_cards")
-    backend_service = Backend(db.db_context)
+    backend_service = Backend(get_database("pokemon_cards"))
 
     try:
         set_rarities = backend_service.get_rarities_in_set(set_id)
     finally:
-        db.db_context.close()
+        backend_service.database.database.context.close()
 
-    return set_rarities
+    return set_rarities if set_rarities else []

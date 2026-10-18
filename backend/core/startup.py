@@ -4,7 +4,7 @@ from sys import exit as exit_program
 
 from pytest import main
 
-from backend.database.db_setup import DatabaseSetup
+from backend.database.db_setup import Database
 
 
 def startup(unit_tests: bool = True):
@@ -31,34 +31,21 @@ def setup_logging():
 def setup_database():
     """Create and validate the application's SQLite database."""
     logger = getLogger(__name__)
-    database_dir = Path(__file__).resolve().parent.parent / "database"
-    database_path = database_dir / "pokemon_cards.db"
 
-    logger.info(
-        f"Setting up the database. Database directory is set to {database_dir}."
-    )
-    database_dir.mkdir(parents=True, exist_ok=True)
-
-    db = DatabaseSetup(str(database_path))
+    db = Database("pokemon_cards")  # The database name without the .db extension
     db.initialise_db()
     logger.info("Database initialisation complete.")
 
-    if not db.integrity_check():
-        logger.error("Database integrity check failed.")
-        db.db_context.close()
-        database_path.unlink(missing_ok=True)
-        exit_program(1)
+    db.integrity_check()
 
-    logger.info("Initialised the database succesfully!")
-    db.db_context.close()
+    logger.info("Initialised the database successfully!")
+    db.close_db()
 
 
-def get_database(file_name: str) -> DatabaseSetup:
-    database_path = (
-        Path(__file__).resolve().parent.parent / "database" / f"{file_name}.db"
-    )
-    DatabaseSetup(str(database_path)).initialise_db()
-    return DatabaseSetup(str(database_path))
+def get_database(file_name: str) -> Database:
+    db = Database(file_name)
+    db.initialise_db()
+    return db
 
 
 def tests():
