@@ -1,3 +1,9 @@
+"""Database access layer: generic and per-table operations on the SQLite database.
+
+Use `DatabaseOperations` as the entry point. It wraps a `Database` from
+`db_setup` and exposes one operations object per table.
+"""
+
 from logging import getLogger
 from sqlite3 import Connection, Row
 from sqlite3 import Error as db_error
@@ -12,9 +18,22 @@ class DatabaseOperations:
     Groups one operations class per table, so callers can use for example
     `database.sets.get_by_id(1)` or `database.cards.get_in_set(1)`.
     All of them share the same SQLite connection.
+
+    Attributes:
+        database: The `Database` this object works on.
+        sets: Operations for the `sets` table.
+        cards: Operations for the `cards` table.
+        variants: Operations for the `card_variants` table.
+        images: Operations for the `card_images` table.
     """
 
     def __init__(self, database: Database) -> None:
+        """Create the per-table operations on the connection of `database`.
+
+        Args:
+            database: An initialised database. Its connection is shared by
+                every operations object. This class does not close it.
+        """
         self.database = database
         self.sets = SetOperations(database.context)
         self.cards = CardOperations(database.context)
@@ -144,9 +163,16 @@ class DatabaseOperationsBaseClass:
     def update(self, update_entry: dict[str, str | int | bytes | None]) -> bool:
         """Update a row identified by this table's primary key.
 
-        Requires values for every table column. Primary-key columns identify the
-        row and are not changed. Returns True if a row was updated, otherwise False.
-        Tables with no non-key columns cannot be updated with this method.
+        Primary-key columns identify the row and are not changed. Tables with
+        no non-key columns cannot be updated with this method.
+
+        Args:
+            update_entry: Column name to value. Must contain every column of
+                the table, including the primary key.
+
+        Returns:
+            True if a row was updated. False if columns are missing, no row
+            matched the primary key, or the update failed.
         """
         primary_keys = self.primary_key_columns
         update_columns = [
@@ -227,9 +253,17 @@ class DatabaseOperationsBaseClass:
 
 
 class SetOperations(DatabaseOperationsBaseClass):
-    """Provides database operations for Pokémon TCG sets."""
+    """Provides database operations for Pokémon TCG sets.
+
+    Rows are returned as `Set` objects.
+    """
 
     def __init__(self, context: Connection) -> None:
+        """Bind to the `sets` table.
+
+        Args:
+            context: Open SQLite connection with `sqlite3.Row` as row factory.
+        """
         super().__init__(
             "sets",
             context,
@@ -250,9 +284,13 @@ class SetOperations(DatabaseOperationsBaseClass):
     ) -> list[Set]:
         """Convert database rows into `Set` objects.
 
-        Rows that miss a required field (id, name, slug, sync_complete) are
-        logged and skipped. The optional fields become None if they are not of
-        the expected type.
+        Args:
+            data: Row dictionaries as returned by `get`.
+
+        Returns:
+            The valid rows as `Set` objects. Rows that miss a required field
+            (id, name, slug, sync_complete) are logged and skipped. The
+            optional fields become None if they are not of the expected type.
         """
         converted_sets: list[Set] = []
 
@@ -295,6 +333,12 @@ class SetOperations(DatabaseOperationsBaseClass):
         The year is compared as text with the first four characters of
         `release_date` (stored as e.g. '2026-01-01'), so it is passed as a
         string.
+
+        Args:
+            year: Four-digit release year, e.g. 2026.
+
+        Returns:
+            The matching sets, or an empty list if there are none.
         """
         return self.__cast_as_sets(
             self.get(
@@ -310,14 +354,28 @@ class SetOperations(DatabaseOperationsBaseClass):
         return self.__cast_as_sets(self.get({}, "*", fetch_all=True))
 
     def get_by_id(self, set_id: int) -> Set | None:
-        """Retrieve a set by its id, or None if it does not exist."""
+        """Retrieve a set by its id.
+
+        Args:
+            set_id: Id of the set.
+
+        Returns:
+            The set, or None if it does not exist.
+        """
         matching_sets = self.__cast_as_sets(
             self.get({"id": set_id}, "*", where_clause="id = :id")
         )
         return matching_sets[0] if matching_sets else None
 
     def get_by_name(self, set_name: str) -> Set | None:
-        """Retrieve the set with exactly this name, or None if there is none."""
+        """Retrieve the set with exactly this name.
+
+        Args:
+            set_name: Case-sensitive set name.
+
+        Returns:
+            The set, or None if there is none.
+        """
         matching_sets = self.__cast_as_sets(
             self.get({"name": set_name}, "*", where_clause="name = :name")
         )
@@ -340,9 +398,17 @@ class SetOperations(DatabaseOperationsBaseClass):
 
 
 class CardOperations(DatabaseOperationsBaseClass):
-    """Provides database operations for Pokémon TCG cards and their properties."""
+    """Provides database operations for Pokémon TCG cards and their properties.
+
+    Rows are returned as `Card` objects.
+    """
 
     def __init__(self, context: Connection) -> None:
+        """Bind to the `cards` table.
+
+        Args:
+            context: Open SQLite connection with `sqlite3.Row` as row factory.
+        """
         super().__init__(
             "cards", context, ["id", "set_id", "name", "number", "rarity"], ["id"]
         )
@@ -352,8 +418,13 @@ class CardOperations(DatabaseOperationsBaseClass):
     ) -> list[Card]:
         """Convert database rows into `Card` objects.
 
-        Rows that miss a required field (id, set_id, name) are logged and
-        skipped. `number` and `rarity` become None if they are not text.
+        Args:
+            data: Row dictionaries as returned by `get`.
+
+        Returns:
+            The valid rows as `Card` objects. Rows that miss a required field
+            (id, set_id, name) are logged and skipped. `number` and `rarity`
+            become None if they are not text.
         """
         converted_cards: list[Card] = []
 
@@ -390,7 +461,14 @@ class CardOperations(DatabaseOperationsBaseClass):
         return self.__cast_as_cards(self.get({}, "*", fetch_all=True))
 
     def get_in_set(self, set_id: int) -> list[Card]:
-        """Retrieve all cards belonging to a specific set, ordered by number."""
+        """Retrieve all cards belonging to a specific set, ordered by number.
+
+        Args:
+            set_id: Id of the set.
+
+        Returns:
+            The cards of the set, or an empty list if there are none.
+        """
         return self.__cast_as_cards(
             self.get(
                 {"set_id": set_id},
@@ -402,7 +480,14 @@ class CardOperations(DatabaseOperationsBaseClass):
         )
 
     def get_amount_in_set(self, set_id: int) -> int:
-        """Count the cards that are stored for a set. Returns 0 if there are none."""
+        """Count the cards that are stored for a set.
+
+        Args:
+            set_id: Id of the set.
+
+        Returns:
+            The number of stored cards, or 0 if there are none.
+        """
         count_rows = self.get(
             {"set_id": set_id}, "COUNT(*) AS total", where_clause="set_id = :set_id"
         )
@@ -414,7 +499,14 @@ class CardOperations(DatabaseOperationsBaseClass):
         return card_total if isinstance(card_total, int) else 0
 
     def get_by_id(self, card_id: int) -> Card | None:
-        """Retrieve a card by its id, or None if it does not exist."""
+        """Retrieve a card by its id.
+
+        Args:
+            card_id: Id of the card.
+
+        Returns:
+            The card, or None if it does not exist.
+        """
         matching_cards = self.__cast_as_cards(
             self.get({"id": card_id}, "*", where_clause="id = :id")
         )
@@ -425,6 +517,12 @@ class CardOperations(DatabaseOperationsBaseClass):
 
         Common, Uncommon and Rare come first, in that order. Other rarities
         follow, ordered by the lowest card number that has that rarity.
+
+        Args:
+            set_id: Id of the set.
+
+        Returns:
+            The rarity names in that order. Cards without a rarity are ignored.
         """
         rarity_rows = self.get(
             {"set_id": set_id},
@@ -453,12 +551,27 @@ class CardVariantsOperations(DatabaseOperationsBaseClass):
         self,
         context: Connection,
     ) -> None:
+        """Bind to the `card_variants` table.
+
+        Args:
+            context: Open SQLite connection with `sqlite3.Row` as row factory.
+        """
         super().__init__(
             "card_variants", context, ["card_id", "variant"], ["card_id", "variant"]
         )
 
     def get_by_card_id(self, card_id: int) -> list[str]:
-        """Retrieve all variants belonging to a card in a predefined order."""
+        """Retrieve all variants belonging to a card in a predefined order.
+
+        The order is Normal, Reverse Holofoil, Holofoil, then any other
+        variant alphabetically.
+
+        Args:
+            card_id: Id of the card.
+
+        Returns:
+            The variant names, or an empty list if the card has none.
+        """
         variant_rows = self.get(
             {"card_id": card_id},
             "variant",
@@ -476,7 +589,14 @@ class CardVariantsOperations(DatabaseOperationsBaseClass):
         return [str(variant_row["variant"]) for variant_row in variant_rows]
 
     def get_in_set(self, set_id: int) -> list[str]:
-        """Retrieve all unique variant types used within a set."""
+        """Retrieve all unique variant types used within a set.
+
+        Args:
+            set_id: Id of the set.
+
+        Returns:
+            The distinct variant names of all cards in the set, unordered.
+        """
         # The set id is stored on the cards table, so join to reach it.
         variant_rows = self.get(
             {"set_id": set_id},
@@ -488,14 +608,29 @@ class CardVariantsOperations(DatabaseOperationsBaseClass):
         return [str(variant_row["variant"]) for variant_row in variant_rows]
 
     def delete_all_by_card_id(self, card_id: int) -> bool:
-        """Delete every variant of a card. Returns True if any were deleted."""
+        """Delete every variant of a card.
+
+        Args:
+            card_id: Id of the card.
+
+        Returns:
+            True if any variant was deleted, otherwise False.
+        """
         return self.delete({"card_id": card_id})
 
 
 class CardImageOperations(DatabaseOperationsBaseClass):
-    """Provides database operations for the downloaded image of each card."""
+    """Provides database operations for the downloaded image of each card.
+
+    Each card has at most one image, stored as raw bytes with its MIME type.
+    """
 
     def __init__(self, context: Connection) -> None:
+        """Bind to the `card_images` table.
+
+        Args:
+            context: Open SQLite connection with `sqlite3.Row` as row factory.
+        """
         super().__init__(
             "card_images",
             context,
@@ -505,6 +640,9 @@ class CardImageOperations(DatabaseOperationsBaseClass):
 
     def get_by_card_id(self, card_id: int) -> tuple[bytes, str] | None:
         """Retrieve the stored image of a card.
+
+        Args:
+            card_id: Id of the card.
 
         Returns:
             A tuple of (image bytes, MIME type such as 'image/png'), or None if
