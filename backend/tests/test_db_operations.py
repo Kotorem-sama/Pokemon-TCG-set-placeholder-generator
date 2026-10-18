@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from pathlib import Path
 from sqlite3 import Connection
 
 from pytest import fixture
@@ -9,18 +10,18 @@ from backend.models import Card, Set
 
 
 @fixture
-def db_context() -> Generator[Connection, None, None]:
-    db = Database(":memory:")
-    db.initialise_db()
-
-    yield db.context
-
-    db.context.close()
+def db_context(db: Database) -> Connection:
+    return db.context
 
 
 @fixture
-def db() -> Database:
-    return Database(":memory:")
+def db(tmp_path: Path) -> Generator[Database, None, None]:
+    database = Database(str(tmp_path / "pokemon_cards"))
+    database.initialise_db()
+
+    yield database
+
+    database.close_db()
 
 
 @fixture
@@ -104,7 +105,7 @@ def test_add_and_get_set(database: DatabaseOperations, test_set: Set):
 
 def test_get_missing_set(database: DatabaseOperations):
     assert database.sets.get_by_id(999) is None
-    assert database.sets.get_by_name("Nope") is None
+    assert database.sets.get_by_name("Nope") == []
 
 
 def test_set_with_null_fields(database: DatabaseOperations):
@@ -126,7 +127,8 @@ def test_get_set_by_name(database: DatabaseOperations, test_set: Set):
     result = database.sets.get_by_name("Test Set")
 
     assert result is not None
-    assert result.id == 1
+    assert len(result) == 1
+    assert result[0].id == 1
 
 
 def test_get_all_sets(database: DatabaseOperations, test_set: Set):
