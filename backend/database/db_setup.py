@@ -5,33 +5,56 @@ from sqlite3 import Error as sqlite3Error
 
 
 class Database:
-    """Handles SQLite database connections, initialization and maintenance."""
+    """Manage a SQLite database file, its connection, and its contents."""
 
     def __init__(self, database_name: str):
-        """Initialize the database setup with the database file path."""
+        """Open or create a database file in this module's directory.
+
+        The connection is configured with row objects and foreign-key
+        enforcement enabled.
+
+        Args:
+            database_name: Database filename without the ``.db`` extension.
+        """
         self.database_path = Path(__file__).resolve().parent / f"{database_name}.db"
         self.logger = getLogger(__name__)
         self.context = self.__connect_db()
 
     def delete_database(self):
-        """Ensure the database connection is closed when the object is deleted. Then the database file is removed."""
+        """Close the connection and permanently remove this database file.
+
+        Use only when the database is disposable, such as a temporary staging
+        database. This operation deletes the file; it is not automatic cleanup.
+        """
         self.close_db()
         self.database_path.unlink(missing_ok=True)
 
     def close_db(self):
-        """Close the connection to the SQLite database."""
+        """Close the database connection without deleting the database file."""
         if self.context:
             self.context.close()
 
     def __connect_db(self) -> Connection:
-        """Create and configure a connection to the SQLite database."""
+        """Open the database and configure its connection.
+
+        Returns:
+            A connection with foreign-key enforcement enabled and rows returned
+            as ``sqlite3.Row`` objects.
+        """
         conn = connect(self.database_path)
         conn.execute("PRAGMA foreign_keys = ON")
         conn.row_factory = Row
         return conn
 
-    def integrity_check(self):
-        """Check the integrity of the SQLite database."""
+    def integrity_check(self) -> bool:
+        """Run SQLite's integrity check.
+
+        Returns:
+            True if SQLite reports ``ok``, otherwise False.
+
+        Raises:
+            sqlite3.Error: If the integrity-check query fails.
+        """
         self.logger.info("Starting a database integrity check.")
 
         cursor = self.context.cursor()
@@ -47,7 +70,12 @@ class Database:
         return str(check[0]).lower() == "ok"
 
     def initialise_db(self):
-        """Create the database tables if they do not already exist."""
+        """Create the application tables if they do not already exist.
+
+        This creates the sets, cards, card variants, and card images tables,
+        including their foreign-key constraints. It does not clear existing
+        rows or migrate an existing schema.
+        """
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
 
         cursor = self.context.cursor()
@@ -91,7 +119,16 @@ class Database:
             cursor.close()
 
     def reset_db(self, databases: list[str] | None = None):
-        """Drop the selected database tables and recreate the database structure."""
+        """Delete rows from the selected tables and commit the changes.
+
+        Args:
+            databases: Tables to clear. Defaults to all application tables.
+                Only the known table names are accepted.
+
+        Raises:
+            ValueError: If any requested table name is not allowed.
+            sqlite3.Error: If clearing or committing the changes fails.
+        """
         cursor = self.context.cursor()
 
         standard_databases = ["card_images", "card_variants", "cards", "sets"]
@@ -110,8 +147,19 @@ class Database:
         finally:
             cursor.close()
 
-    def merge_db(self, source_db: "Database"):
-        """Merge the contents of another database into the current database."""
+    def merge_db(self, source_db: "Database") -> bool:
+        """Copy card, variant, and image rows from another database.
+
+        The destination must already contain the parent set rows required by
+        the cards' foreign keys. The source's ``sets`` table is not copied.
+
+        Args:
+            source_db: Database whose card-related rows will be copied.
+
+        Returns:
+            True if all rows were copied and committed; False if a SQLite
+            error caused the destination transaction to be rolled back.
+        """
         self.logger.info(
             f"Merging database '{source_db.database_path}' into '{self.database_path}'."
         )
