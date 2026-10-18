@@ -132,6 +132,7 @@ class DatabaseOperationsBaseClass:
             return False
 
         finally:
+            self.context.rollback()
             cursor.close()
 
     def update(self, update_entry: dict[str, str | int | bytes | None]) -> bool:
@@ -156,7 +157,7 @@ class DatabaseOperationsBaseClass:
                 if column != "id"
             )
             cursor.execute(
-                f"UPDATE {self.table_name} SET {assignments} WHERE id = :id",
+                f"UPDATE {self.table_name} SET {assignments} WHERE ",
                 update_entry,
             )
             self.context.commit()

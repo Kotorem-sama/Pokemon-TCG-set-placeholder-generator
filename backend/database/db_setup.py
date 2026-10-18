@@ -1,6 +1,6 @@
 from logging import getLogger
 from pathlib import Path
-from sqlite3 import Connection, Row, connect
+from sqlite3 import Connection, Row, connect, Error as sqlite3Error
 
 
 class Database:
@@ -103,18 +103,21 @@ class Database:
             f"Merging database '{source_db.database_path}' into '{self.database_path}'."
         )
 
-        source_cursor = source_db.context.cursor()
-        target_cursor = self.context.cursor()
+        try:
+            source_cursor = source_db.context.cursor()
+            target_cursor = self.context.cursor()
 
-        for table in ["sets", "cards", "card_variants", "card_images"]:
-            rows = source_cursor.execute(f"SELECT * FROM {table}").fetchall()
-            for row in rows:
-                columns = ", ".join(row.keys())
-                placeholders = ", ".join("?" for _ in row.keys())
-                values = tuple(row)
-                target_cursor.execute(
-                    f"INSERT OR IGNORE INTO {table} ({columns}) VALUES ({placeholders})",
-                    values,
-                )
-
-        self.context.commit()
+            for table in ["cards", "card_variants", "card_images"]:
+                rows = source_cursor.execute(f"SELECT * FROM {table}").fetchall()
+                for row in rows:
+                    columns = ", ".join(row.keys())
+                    placeholders = ", ".join("?" for _ in row.keys())
+                    values = tuple(row)
+                    target_cursor.execute(
+                        f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
+                        values,
+                    )
+            self.context.commit()
+        except sqlite3Error as error:
+            self.context.rollback()
+            self.logger.error(f"Failed to merge database: {error}")
