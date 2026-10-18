@@ -35,12 +35,12 @@ def health_check():
 async def get_years():
     backend_service = Backend(get_database("pokemon_cards"))
 
-    # try:
-    years = backend_service.get_years()
-    # finally:
-    #     backend_service.database.database.context.close()
+    try:
+        years = await backend_service.get_years()
+    finally:
+        backend_service.database.database.context.close()
 
-    return years if years else ["aa"]
+    return years if years else []
 
 
 @app.get("/sets/{year}")
