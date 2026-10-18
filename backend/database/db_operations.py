@@ -367,19 +367,24 @@ class SetOperations(DatabaseOperationsBaseClass):
         )
         return matching_sets[0] if matching_sets else None
 
-    def get_by_name(self, set_name: str) -> Set | None:
+    def get_by_name(self, set_name: str) -> list[Set]:
         """Retrieve the set with exactly this name.
 
         Args:
-            set_name: Case-sensitive set name.
+            set_name: Set name (case-insensitive).
 
         Returns:
-            The set, or None if there is none.
+            The matching sets, or an empty list if there are none.
         """
         matching_sets = self.__cast_as_sets(
-            self.get({"name": set_name}, "*", where_clause="name = :name")
+            self.get(
+                {"name": f"%{set_name.lower()}%"},
+                "*",
+                where_clause="name LIKE :name",
+                fetch_all=True,
+            )
         )
-        return matching_sets[0] if matching_sets else None
+        return matching_sets if matching_sets else []
 
     def get_release_date_years(self) -> list[str]:
         """Retrieve every release year that has a set, newest first.

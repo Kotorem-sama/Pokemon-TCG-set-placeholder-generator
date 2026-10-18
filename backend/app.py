@@ -31,6 +31,18 @@ def health_check():
     return {"status": "ok"}
 
 
+@app.get("/set/{set_name}")
+def get_sets_by_name(set_name: str):
+    backend_service = Backend(get_database("pokemon_cards"))
+
+    try:
+        set_info = backend_service.get_sets_by_name(set_name)
+    finally:
+        backend_service.database.database.context.close()
+
+    return set_info
+
+
 @app.get("/sets/years")
 def get_years():
     backend_service = Backend(get_database("pokemon_cards"))

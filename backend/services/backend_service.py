@@ -27,6 +27,9 @@ class Backend:
     def get_sets_in_year(self, year: int):
         return self.database.sets.get_by_year(year)
 
+    def get_sets_by_name(self, set_name: str):
+        return self.database.sets.get_by_name(set_name)
+
     def get_variants_in_set(self, set_id: int):
         return self.database.variants.get_in_set(set_id)
 
