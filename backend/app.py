@@ -5,12 +5,15 @@ from fastapi.responses import FileResponse
 
 from backend.core.startup import get_database, startup
 from backend.services.backend_service import Backend
+from fastapi.staticfiles import StaticFiles
+
 
 app = FastAPI(
     title="Pokémon TCG Set Lister",
     description="Generate printable Pokémon TCG set lists.",
     version="1.0.0",
 )
+app.mount("/app", StaticFiles(directory="frontend", html=True), name="frontend")
 startup(unit_tests=False)
 
 
@@ -68,11 +71,11 @@ def get_sets_by_year(year: int):
 
 
 @app.get("/sets/{set_id}/variants")
-def get_variants_in_set(set_id: int):
+async def get_variants_in_set(set_id: int):
     backend_service = Backend(get_database("pokemon_cards"))
 
     try:
-        set_variants = backend_service.get_variants_in_set(set_id)
+        set_variants = await backend_service.get_variants_in_set(set_id)
     finally:
         backend_service.database.database.context.close()
 
@@ -80,11 +83,11 @@ def get_variants_in_set(set_id: int):
 
 
 @app.get("/sets/{set_id}/rarities")
-def get_rarities_in_set(set_id: int):
+async def get_rarities_in_set(set_id: int):
     backend_service = Backend(get_database("pokemon_cards"))
 
     try:
-        set_rarities = backend_service.get_rarities_in_set(set_id)
+        set_rarities = await backend_service.get_rarities_in_set(set_id)
     finally:
         backend_service.database.database.context.close()
 

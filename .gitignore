@@ -15,3 +15,4 @@ build/
 .pytest_cache/
 pokemon_tcg_sync.log
 backend/data/generated/
+backend/database/pokemon_cards.db-journal

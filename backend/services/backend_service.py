@@ -30,11 +30,24 @@ class Backend:
     def get_sets_by_name(self, set_name: str):
         return self.database.sets.get_by_name(set_name)
 
-    def get_variants_in_set(self, set_id: int):
-        return self.database.variants.get_in_set(set_id)
+    async def get_variants_in_set(self, set_id: int):
+        variants = self.database.variants.get_in_set(set_id)
 
-    def get_rarities_in_set(self, set_id: int):
-        return self.database.cards.get_rarities_in_set(set_id)
+        if not variants:
+            await self.sync_service.sync_set(set_id)
+            
+            variants = self.database.variants.get_in_set(set_id)
+
+        return variants
+
+    async def get_rarities_in_set(self, set_id: int):
+        rarities = self.database.cards.get_rarities_in_set(set_id)
+
+        if not rarities:
+            await self.sync_service.sync_set(set_id)
+            rarities = self.database.cards.get_rarities_in_set(set_id)
+
+        return rarities
 
     async def get_document(self, set_id: int, rarities: list[str], variants: list[str]):
         set_sync = await self.sync_service.sync_sets()
