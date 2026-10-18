@@ -34,7 +34,7 @@ class DatabaseOperationsBaseClass:
     """
 
     def __init__(
-        self, table_name: str, context: Connection, columns: list[str]
+        self, table_name: str, context: Connection, columns: list[str], primary_key_columns: list[str],
     ) -> None:
         """Bind the operations to one table.
 
@@ -43,6 +43,7 @@ class DatabaseOperationsBaseClass:
             context: Open SQLite connection. Its row factory must be
                 `sqlite3.Row`, so rows can be converted to dictionaries.
             columns: All column names of the table, used by add/update/delete.
+            primary_key_columns: The columns that make up the primary key of the table.
 
         Raises:
             ValueError: If `table_name` is not a known table.
@@ -55,6 +56,7 @@ class DatabaseOperationsBaseClass:
         self.context = context
         # Maps each column name to its named placeholder, e.g. {"name": ":name"}.
         self.columns: dict[str, str] = {column: f":{column}" for column in columns}
+        self.primary_key_columns = primary_key_columns
 
     def get(
         self,
@@ -129,48 +131,47 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to insert '{new_entry}' into the table '{self.table_name}': {error}."
             )
+            self.context.rollback()
             return False
 
         finally:
-            self.context.rollback()
             cursor.close()
 
     def update(self, update_entry: dict[str, str | int | bytes | None]) -> bool:
-        """Update an existing row, found by its `id`.
+        """Update a row identified by this table's primary key.
 
-        Args:
-            update_entry: Column name to value. Must contain `id` and every
-                other column of the table. All columns except `id` are
-                overwritten.
-
-        Returns:
-            True if a row was updated. False if no row has that id, or if the
-            update failed.
+        Requires values for every table column. Primary-key columns identify the
+        row and are not changed. Returns True if a row was updated, otherwise False.
+        Tables with no non-key columns cannot be updated with this method.
         """
-        self.logger.info(f"Updating {update_entry} to the table {self.table_name}.")
+        primary_keys = self.primary_key_columns
+        update_columns = [
+            column for column in self.columns if column not in primary_keys
+        ]
+
+        if not update_columns or any(
+            column not in update_entry for column in self.columns
+        ):
+            return False
+
+        assignments = ", ".join(f"{column} = :{column}" for column in update_columns)
+        where_clause = " AND ".join(
+            f"{column} = :{column}" for column in primary_keys
+        )
+
         cursor = self.context.cursor()
         try:
-            # Builds e.g. "name = :name, slug = :slug". The id is not overwritten.
-            assignments = ", ".join(
-                f"{column} = {placeholder}"
-                for column, placeholder in self.columns.items()
-                if column != "id"
-            )
             cursor.execute(
-                f"UPDATE {self.table_name} SET {assignments} WHERE ",
+                f"UPDATE {self.table_name} SET {assignments} WHERE {where_clause}",
                 update_entry,
             )
             self.context.commit()
-            self.logger.info(
-                f"Successfully updated '{update_entry}' to table '{self.table_name}'!"
-            )
             return cursor.rowcount > 0
         except db_error as error:
             self.logger.warning(
-                f"Failed to update '{update_entry}' in table '{self.table_name}': {error}."
+                f"Failed to update '{update_entry}' in '{self.table_name}': {error}."
             )
             return False
-
         finally:
             cursor.close()
 
@@ -237,6 +238,7 @@ class SetOperations(DatabaseOperationsBaseClass):
                 "card_count",
                 "sync_complete",
             ],
+            ["id"],
         )
 
     def __cast_as_sets(
@@ -337,7 +339,7 @@ class CardOperations(DatabaseOperationsBaseClass):
     """Provides database operations for Pokémon TCG cards and their properties."""
 
     def __init__(self, context: Connection) -> None:
-        super().__init__("cards", context, ["id", "set_id", "name", "number", "rarity"])
+        super().__init__("cards", context, ["id", "set_id", "name", "number", "rarity"], ["id"])
 
     def __cast_as_cards(
         self, data: list[dict[str, str | int | bytes | None]]
@@ -445,7 +447,7 @@ class CardVariantsOperations(DatabaseOperationsBaseClass):
         self,
         context: Connection,
     ) -> None:
-        super().__init__("card_variants", context, ["card_id", "variant"])
+        super().__init__("card_variants", context, ["card_id", "variant"], ["card_id", "variant"])
 
     def get_by_card_id(self, card_id: int) -> list[str]:
         """Retrieve all variants belonging to a card in a predefined order."""
@@ -487,7 +489,7 @@ class CardImageOperations(DatabaseOperationsBaseClass):
 
     def __init__(self, context: Connection) -> None:
         super().__init__(
-            "card_images", context, ["card_id", "image_data", "content_type"]
+            "card_images", context, ["card_id", "image_data", "content_type"], ["card_id"]
         )
 
     def get_by_card_id(self, card_id: int) -> tuple[bytes, str] | None:

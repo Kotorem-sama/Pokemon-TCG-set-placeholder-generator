@@ -118,6 +118,8 @@ class Database:
                         values,
                     )
             self.context.commit()
+            return True
         except sqlite3Error as error:
             self.context.rollback()
             self.logger.error(f"Failed to merge database: {error}")
+            return False
