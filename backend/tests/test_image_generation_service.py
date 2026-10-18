@@ -1,14 +1,15 @@
+from collections.abc import Generator
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from pytest import fixture
+
+from backend.database.db_operations import DatabaseOperations
+from backend.database.db_setup import Database
 from backend.models import Card, Set
 from backend.services.image_generation_service import ImageGeneration
-from pytest import fixture
-from typing import Generator
-from pathlib import Path
 
-from backend.database.db_setup import Database
-from backend.database.db_operations import DatabaseOperations
 
 @fixture
 def db(tmp_path: Path) -> Generator[Database, None, None]:
@@ -24,6 +25,7 @@ def db(tmp_path: Path) -> Generator[Database, None, None]:
 def database(db: Database) -> DatabaseOperations:
     return DatabaseOperations(db)
 
+
 def test_generate_images_for_card_filters_variants_with_existing_image():
     variants = ["Normal", "Holofoil", "Reverse Holofoil"]
     database = SimpleNamespace(
@@ -36,9 +38,7 @@ def test_generate_images_for_card_filters_variants_with_existing_image():
     image_generation.image_processor = Mock(return_value=True)
     card = Card(1, 1, "Test Card", "001", "Common")
 
-    result = image_generation.generate_images_for_card(
-        card, "Test Set", ["Holofoil"]
-    )
+    result = image_generation.generate_images_for_card(card, "Test Set", ["Holofoil"])
 
     assert result is True
     image_generation.image_processor.assert_called_once_with(
@@ -56,9 +56,7 @@ def test_generate_images_for_card_filters_placeholder_variants():
     image_generation.generate_placeholder = Mock(return_value=True)
     card = Card(1, 1, "Test Card", "001", "Common")
 
-    result = image_generation.generate_images_for_card(
-        card, "Test Set", ["Holofoil"]
-    )
+    result = image_generation.generate_images_for_card(card, "Test Set", ["Holofoil"])
 
     assert result is True
     image_generation.generate_placeholder.assert_called_once_with(

@@ -65,7 +65,7 @@ class DocumentGeneration:
 
         return valid_images
 
-    def generate_pdf(self, image_paths: list[str], set_name: str) -> None:
+    def generate_pdf(self, image_paths: list[str], set_name: str) -> Path | None:
         """
         Generate a PDF document containing card images arranged in a grid layout.
 
@@ -81,14 +81,14 @@ class DocumentGeneration:
         """
         if not image_paths:
             self.logger.warning("image_paths list cannot be empty")
-            return
+            return None
 
         # Filter to only valid images, no gaps in grid
         valid_images = self._filter_valid_images(image_paths)
 
         if not valid_images:
             self.logger.warning("No valid images found in image_paths")
-            return
+            return None
 
         self.logger.info("Starting PDF generation with %d images", len(valid_images))
 
@@ -170,6 +170,7 @@ class DocumentGeneration:
 
             self.logger.info("PDF generated successfully: %s", final_path)
             remove_set_images(set_name)
+            return Path(final_path)
         except OSError:
             # Clean up temp file on failure
             try:
@@ -178,6 +179,7 @@ class DocumentGeneration:
                 self.logger.warning("Could not delete temp file: %s", temp_path)
             self.logger.exception("Failed to generate PDF")
             remove_set_images(set_name)
+            return None
         except Exception:
             # Clean up temp file on any other error
             try:
@@ -186,3 +188,4 @@ class DocumentGeneration:
                 self.logger.warning("Could not delete temp file: %s", temp_path)
             self.logger.exception("Unexpected error during PDF generation")
             remove_set_images(set_name)
+            return None

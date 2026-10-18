@@ -1,4 +1,5 @@
 from logging import getLogger
+from pathlib import Path
 
 from backend.database.db_operations import DatabaseOperations
 from backend.database.db_setup import Database
@@ -35,7 +36,7 @@ class Backend:
 
         if not variants:
             await self.sync_service.sync_set(set_id)
-            
+
             variants = self.database.variants.get_in_set(set_id)
 
         return variants
@@ -49,7 +50,9 @@ class Backend:
 
         return rarities
 
-    async def get_document(self, set_id: int, rarities: list[str], variants: list[str]):
+    async def get_document(
+        self, set_id: int, rarities: list[str], variants: list[str]
+    ) -> None | Path:
         set_sync = await self.sync_service.sync_sets()
 
         current_set = self.database.sets.get_by_id(set_id)
@@ -80,4 +83,6 @@ class Backend:
         if not image_paths:
             return
 
-        self.document_generation_service.generate_pdf(image_paths, current_set.name)
+        return self.document_generation_service.generate_pdf(
+            image_paths, current_set.name
+        )

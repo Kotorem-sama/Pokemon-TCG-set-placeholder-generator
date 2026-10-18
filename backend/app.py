@@ -1,12 +1,13 @@
+from os import path
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from flask import jsonify, send_file, Flask
 
 from backend.core.startup import get_database, startup
 from backend.services.backend_service import Backend
-from fastapi.staticfiles import StaticFiles
-
 
 app = FastAPI(
     title="Pokémon TCG Set Lister",
@@ -123,10 +124,18 @@ async def generate_document(set_id: int, options: dict[str, list[str]]):
     backend_service = Backend(get_database("pokemon_cards"))
 
     try:
-        result = await backend_service.get_document(
+        output_path = await backend_service.get_document(
             set_id, options["rarities"], options["variants"]
+        )
+        if not output_path or not path.exists(output_path):
+            return jsonify({"error": "Document was not generated"}), 500
+
+        return send_file(
+            output_path,
+            as_attachment=True,
+            download_name="pokemon-set-placeholders.docx",
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
     finally:
         backend_service.database.database.context.close()
 
-    return {"success": result}

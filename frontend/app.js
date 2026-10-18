@@ -132,6 +132,34 @@ function populateCheckboxes(fieldset, items, name, legendText) {
     fieldset.disabled = items.length === 0;
 }
 
+async function fetchAndDownload(url, options = {}, fallbackFilename = "document.docx") {
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+        throw new Error(`Request failed (${response.status}).`);
+    }
+
+    // Use the filename from the backend's Content-Disposition header if present
+    let filename = fallbackFilename;
+    const disposition = response.headers.get("Content-Disposition");
+    const match = disposition && disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    if (match) {
+        filename = decodeURIComponent(match[1]);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(blobUrl);
+}
+
 
 /* =========================
    Load release years
@@ -233,10 +261,8 @@ async function loadSetOptions(setId) {
     showStatus("Loading set options...");
 
     try {
-        const [rarities, variants] = await Promise.all([
-            fetchJSON(API.rarities(setId)),
-            fetchJSON(API.variants(setId)),
-        ]);
+        const rarities = await fetchJSON(API.rarities(setId))
+        const variants = await fetchJSON(API.variants(setId))
 
         if (!Array.isArray(rarities) || !Array.isArray(variants)) {
             throw new Error("Expected arrays for rarities and variants.");
@@ -323,22 +349,19 @@ async function generateDocument(event) {
     showStatus("Generating your document. Please wait...");
 
     try {
-        const result = await fetchJSON(API.generate(setId), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
+        await fetchAndDownload(
+            API.generate(setId),
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestData),
             },
-            body: JSON.stringify(requestData),
-        });
-
-        if (!result.success) {
-            throw new Error("The backend could not generate the document.");
-        }
-
-        showStatus(
-            "Document generation completed. Your backend currently returns a status response, not a downloadable PDF.",
-            "success",
+            "pokemon-set-placeholders.docx",
         );
+
+        showStatus("Your document has been downloaded.", "success");
     } catch (error) {
         console.error("Failed to generate document:", error);
 
