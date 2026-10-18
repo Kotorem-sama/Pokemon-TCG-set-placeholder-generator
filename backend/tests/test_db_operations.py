@@ -4,23 +4,28 @@ from sqlite3 import Connection
 from pytest import fixture
 
 from backend.database.db_operations import DatabaseOperations
-from backend.database.db_setup import DatabaseSetup
+from backend.database.db_setup import Database
 from backend.models import Card, Set
 
 
 @fixture
 def db_context() -> Generator[Connection, None, None]:
-    db = DatabaseSetup(":memory:")
+    db = Database(":memory:")
     db.initialise_db()
 
-    yield db.db_context
+    yield db.context
 
-    db.db_context.close()
+    db.context.close()
 
 
 @fixture
-def database(db_context: Connection) -> DatabaseOperations:
-    return DatabaseOperations(db_context)
+def db() -> Database:
+    return Database(":memory:")
+
+
+@fixture
+def database(db: Database) -> DatabaseOperations:
+    return DatabaseOperations(db)
 
 
 @fixture
