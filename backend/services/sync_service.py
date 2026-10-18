@@ -214,9 +214,8 @@ class SyncService:
                 return False
 
         if within_sync_window:
-            own_database.sets.delete({"id": db_set.id})
-            own_database.sets.add(db_set.get_dict())
-
+            own_database.cards.delete({"set_id": db_set.id})
+            
             own_database.database.merge_db(self.operations.database)
             self.operations.database.reset_db()
             self.operations = own_database
