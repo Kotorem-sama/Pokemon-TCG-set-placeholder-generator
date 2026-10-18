@@ -33,7 +33,7 @@ class Backend:
     def get_rarities_in_set(self, set_id: int):
         return self.database.cards.get_rarities_in_set(set_id)
 
-    async def get_document(self, set_name: str):
+    async def get_document(self, set_name: str, rarities: list[str], variants: list[str]):
         set_sync = await self.sync_service.sync_sets()
 
         current_set = self.database.sets.get_by_name(set_name)
@@ -54,7 +54,7 @@ class Backend:
         if current_set is None:
             return
 
-        if not self.image_generation_service.generate_images_for_set(current_set.id):
+        if not self.image_generation_service.generate_images_for_set(current_set.id, rarities, variants):
             remove_set_images(current_set.name)
             return
 

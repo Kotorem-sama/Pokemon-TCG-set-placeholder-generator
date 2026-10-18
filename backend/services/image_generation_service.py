@@ -363,7 +363,7 @@ class ImageGeneration:
             )
             return False
 
-    def generate_images_for_card(self, current_card: Card, set_name: str) -> bool:
+    def generate_images_for_card(self, current_card: Card, set_name: str, variants: list[str]) -> bool:
         """
         Generate images for all variants of a card.
 
@@ -373,6 +373,7 @@ class ImageGeneration:
         Args:
             current_card: Card object to generate images for
             set_name: Name of the Pokémon set
+            variants: List of variants to generate images for
         """
         try:
             self.logger.info(f"Generating images for card: {current_card.name}")
@@ -385,6 +386,9 @@ class ImageGeneration:
                     f"No image found for {current_card.name}, generating placeholders"
                 )
                 for variant in card_variants:
+                    if variant not in variants:
+                        continue
+
                     if not self.generate_placeholder(
                         current_card, variant, set_name, 287, 400
                     ):
@@ -403,7 +407,7 @@ class ImageGeneration:
             )
             return False
 
-    def generate_images_for_set(self, set_id: int) -> bool:
+    def generate_images_for_set(self, set_id: int, rarities: list[str], variants: list[str]) -> bool:
         """
         Generate images for all cards in a Pokémon set.
 
@@ -411,6 +415,8 @@ class ImageGeneration:
 
         Args:
             set_id: ID of the Pokémon set
+            rarities: List of rarities to filter cards by
+            variants: List of variants to filter cards by
         """
         try:
             self.logger.info(f"Starting image generation for set ID: {set_id}")
@@ -427,7 +433,9 @@ class ImageGeneration:
             )
 
             for card in cards_in_set:
-                if not self.generate_images_for_card(card, current_set.name):
+                if card.rarity not in rarities:
+                    continue
+                if not self.generate_images_for_card(card, current_set.name, variants):
                     return False
 
             self.logger.info(f"Completed image generation for set: {current_set.name}")
