@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from pathlib import Path
 from sqlite3 import Connection
 
 from pytest import fixture
@@ -9,18 +10,18 @@ from backend.models import Card, Set
 
 
 @fixture
-def db_context() -> Generator[Connection, None, None]:
-    db = Database(":memory:")
-    db.initialise_db()
-
-    yield db.context
-
-    db.context.close()
+def db_context(db: Database) -> Connection:
+    return db.context
 
 
 @fixture
-def db() -> Database:
-    return Database(":memory:")
+def db(tmp_path: Path) -> Generator[Database, None, None]:
+    database = Database(str(tmp_path / "pokemon_cards"))
+    database.initialise_db()
+
+    yield database
+
+    database.close_db()
 
 
 @fixture

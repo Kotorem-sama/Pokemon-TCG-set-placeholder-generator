@@ -396,6 +396,9 @@ class ImageGeneration:
             else:
                 self.logger.info(f"Processing actual image for {current_card.name}")
                 for variant in card_variants:
+                    if variant not in variants:
+                        continue
+
                     if not self.image_processor(
                         card_image, current_card, set_name, variant
                     ):
