@@ -126,9 +126,10 @@ class SyncService:
 
             variants.append(current_variant)
 
-            self.operations.variants.add(
+            if not self.operations.variants.add(
                 {"card_id": card_id, "variant": current_variant}
-            )
+            ):
+                return False
 
         self.logger.info(
             f"Successfully synchronised all card variants of card '{card_id}'."
@@ -171,6 +172,7 @@ class SyncService:
         if within_sync_window:
             self.operations = DatabaseOperations(Database("pokemon_cards_temp"))
             self.operations.database.initialise_db()
+            self.operations.database.reset_db()
             self.operations.sets.add(db_set.get_dict())
 
         for card in api_response["data"]:
@@ -215,7 +217,7 @@ class SyncService:
 
         if within_sync_window:
             own_database.cards.delete({"set_id": db_set.id})
-            
+
             own_database.database.merge_db(self.operations.database)
             self.operations.database.reset_db()
             self.operations = own_database
