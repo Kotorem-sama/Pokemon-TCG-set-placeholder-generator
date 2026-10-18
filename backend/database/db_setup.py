@@ -51,51 +51,59 @@ class Database:
 
         cursor = self.context.cursor()
 
-        cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        abbreviation TEXT,
-        release_date TEXT,
-        card_count INTEGER,
-        sync_complete INTEGER
-        )""")
+        try:
 
-        cursor.execute("""CREATE TABLE IF NOT EXISTS cards (
-        id INTEGER PRIMARY KEY,
-        set_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        number TEXT,
-        rarity TEXT,
-        FOREIGN KEY (set_id) REFERENCES sets(id) ON DELETE CASCADE
-        )""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            abbreviation TEXT,
+            release_date TEXT,
+            card_count INTEGER,
+            sync_complete INTEGER
+            )""")
 
-        cursor.execute("""CREATE TABLE IF NOT EXISTS card_variants (
-        card_id INTEGER NOT NULL,
-        variant TEXT NOT NULL,
-        PRIMARY KEY (card_id, variant),
-        FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
-        )""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS cards (
+            id INTEGER PRIMARY KEY,
+            set_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            number TEXT,
+            rarity TEXT,
+            FOREIGN KEY (set_id) REFERENCES sets(id) ON DELETE CASCADE
+            )""")
 
-        cursor.execute("""CREATE TABLE IF NOT EXISTS card_images (
-        card_id INTEGER PRIMARY KEY,
-        image_data BLOB,
-        content_type TEXT NOT NULL,
-        FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
-        )""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS card_variants (
+            card_id INTEGER NOT NULL,
+            variant TEXT NOT NULL,
+            PRIMARY KEY (card_id, variant),
+            FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+            )""")
 
-        self.context.commit()
+            cursor.execute("""CREATE TABLE IF NOT EXISTS card_images (
+            card_id INTEGER PRIMARY KEY,
+            image_data BLOB,
+            content_type TEXT NOT NULL,
+            FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+            )""")
+
+            self.context.commit()
+        finally:
+            cursor.close()
 
     def reset_db(self, databases: list[str] | None = None):
         """Drop the selected database tables and recreate the database structure."""
         cursor = self.context.cursor()
-        if databases is None:
-            databases = ["card_images", "card_variants", "cards", "sets"]
 
-        for table in databases:
-            cursor.execute(f"""DELETE FROM {table}""")
+        try:
+            if databases is None:
+                databases = ["card_images", "card_variants", "cards", "sets"]
 
-        self.context.commit()
+            for table in databases:
+                cursor.execute(f"""DELETE FROM {table}""")
+
+            self.context.commit()
+        finally:
+            cursor.close()
 
     def merge_db(self, source_db: Database):
         """Merge the contents of another database into the current database."""
@@ -103,10 +111,10 @@ class Database:
             f"Merging database '{source_db.database_path}' into '{self.database_path}'."
         )
 
-        try:
-            source_cursor = source_db.context.cursor()
-            target_cursor = self.context.cursor()
+        source_cursor = source_db.context.cursor()
+        target_cursor = self.context.cursor()
 
+        try:
             for table in ["cards", "card_variants", "card_images"]:
                 rows = source_cursor.execute(f"SELECT * FROM {table}").fetchall()
                 for row in rows:
@@ -123,3 +131,6 @@ class Database:
             self.context.rollback()
             self.logger.error(f"Failed to merge database: {error}")
             return False
+        finally:
+            source_cursor.close()
+            target_cursor.close()

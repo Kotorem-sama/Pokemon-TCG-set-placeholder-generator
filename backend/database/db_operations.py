@@ -218,6 +218,7 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to delete '{values}' from table '{self.table_name}': {error}."
             )
+            self.context.rollback()
             return False
         finally:
             cursor.close()
