@@ -96,3 +96,20 @@ class Database:
             cursor.execute(f"""DELETE FROM {table}""")
 
         self.context.commit()
+
+    def merge_db(self, source_db: Database):
+        """Merge the contents of another database into the current database."""
+        self.logger.info(f"Merging database '{source_db.database_path}' into '{self.database_path}'.")
+
+        source_cursor = source_db.context.cursor()
+        target_cursor = self.context.cursor()
+
+        for table in ["sets", "cards", "card_variants", "card_images"]:
+            rows = source_cursor.execute(f"SELECT * FROM {table}").fetchall()
+            for row in rows:
+                columns = ", ".join(row.keys())
+                placeholders = ", ".join("?" for _ in row.keys())
+                values = tuple(row)
+                target_cursor.execute(
+                    f"INSERT OR IGNORE INTO {table} ({columns}) VALUES ({placeholders})", values
+                )

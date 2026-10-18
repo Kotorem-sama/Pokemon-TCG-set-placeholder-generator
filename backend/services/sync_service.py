@@ -208,7 +208,7 @@ class SyncService:
                 success = True
 
             if within_sync_window and not success:
-                # remove temporary database if the sync was not successful.
+                self.operations.database.delete_database()
                 self.operations = own_database
 
             if not success:
@@ -217,7 +217,9 @@ class SyncService:
 
         if within_sync_window:
             own_database.sets.delete({"id": db_set.id})
-            self.operations.database.context.backup(own_database.database.context)
+            own_database.sets.add(db_set.get_dict())
+
+            own_database.database.merge_db(self.operations.database)
             self.operations = own_database
             self.operations.database.context.commit()
 
