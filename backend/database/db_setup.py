@@ -1,6 +1,7 @@
 from logging import getLogger
 from pathlib import Path
-from sqlite3 import Connection, Row, connect, Error as sqlite3Error
+from sqlite3 import Connection, Row, connect
+from sqlite3 import Error as sqlite3Error
 
 
 class Database:
@@ -52,7 +53,6 @@ class Database:
         cursor = self.context.cursor()
 
         try:
-
             cursor.execute("""CREATE TABLE IF NOT EXISTS sets (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
@@ -94,10 +94,15 @@ class Database:
         """Drop the selected database tables and recreate the database structure."""
         cursor = self.context.cursor()
 
-        try:
-            if databases is None:
-                databases = ["card_images", "card_variants", "cards", "sets"]
+        standard_databases = ["card_images", "card_variants", "cards", "sets"]
 
+        if databases is None:
+            databases = standard_databases
+
+        if any(table not in standard_databases for table in databases):
+            raise ValueError("Invalid table name(s) provided.")
+
+        try:
             for table in databases:
                 cursor.execute(f"""DELETE FROM {table}""")
 
@@ -105,7 +110,7 @@ class Database:
         finally:
             cursor.close()
 
-    def merge_db(self, source_db: Database):
+    def merge_db(self, source_db: "Database"):
         """Merge the contents of another database into the current database."""
         self.logger.info(
             f"Merging database '{source_db.database_path}' into '{self.database_path}'."
@@ -119,7 +124,7 @@ class Database:
                 rows = source_cursor.execute(f"SELECT * FROM {table}").fetchall()
                 for row in rows:
                     columns = ", ".join(row.keys())
-                    placeholders = ", ".join("?" for _ in row.keys())
+                    placeholders = ", ".join("?" for _ in row)
                     values = tuple(row)
                     target_cursor.execute(
                         f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",

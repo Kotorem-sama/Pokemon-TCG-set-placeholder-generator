@@ -221,7 +221,7 @@ class SyncService:
             merge_success = own_database.database.merge_db(self.operations.database)
             self.operations.database.reset_db()
             self.operations = own_database
-            
+
             if not merge_success:
                 return False
 

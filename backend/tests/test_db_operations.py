@@ -55,7 +55,9 @@ def test_unknown_table_is_rejected(db_context: Connection):
     from backend.database.db_operations import DatabaseOperationsBaseClass
 
     try:
-        DatabaseOperationsBaseClass("users; DROP TABLE sets", db_context, ["id"], ["id"])
+        DatabaseOperationsBaseClass(
+            "users; DROP TABLE sets", db_context, ["id"], ["id"]
+        )
     except ValueError:
         return
     raise AssertionError("An unknown table name should raise a ValueError.")

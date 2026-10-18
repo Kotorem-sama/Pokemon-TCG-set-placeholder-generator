@@ -34,7 +34,11 @@ class DatabaseOperationsBaseClass:
     """
 
     def __init__(
-        self, table_name: str, context: Connection, columns: list[str], primary_key_columns: list[str],
+        self,
+        table_name: str,
+        context: Connection,
+        columns: list[str],
+        primary_key_columns: list[str],
     ) -> None:
         """Bind the operations to one table.
 
@@ -155,9 +159,7 @@ class DatabaseOperationsBaseClass:
             return False
 
         assignments = ", ".join(f"{column} = :{column}" for column in update_columns)
-        where_clause = " AND ".join(
-            f"{column} = :{column}" for column in primary_keys
-        )
+        where_clause = " AND ".join(f"{column} = :{column}" for column in primary_keys)
 
         cursor = self.context.cursor()
         try:
@@ -341,7 +343,9 @@ class CardOperations(DatabaseOperationsBaseClass):
     """Provides database operations for Pokémon TCG cards and their properties."""
 
     def __init__(self, context: Connection) -> None:
-        super().__init__("cards", context, ["id", "set_id", "name", "number", "rarity"], ["id"])
+        super().__init__(
+            "cards", context, ["id", "set_id", "name", "number", "rarity"], ["id"]
+        )
 
     def __cast_as_cards(
         self, data: list[dict[str, str | int | bytes | None]]
@@ -449,7 +453,9 @@ class CardVariantsOperations(DatabaseOperationsBaseClass):
         self,
         context: Connection,
     ) -> None:
-        super().__init__("card_variants", context, ["card_id", "variant"], ["card_id", "variant"])
+        super().__init__(
+            "card_variants", context, ["card_id", "variant"], ["card_id", "variant"]
+        )
 
     def get_by_card_id(self, card_id: int) -> list[str]:
         """Retrieve all variants belonging to a card in a predefined order."""
@@ -491,7 +497,10 @@ class CardImageOperations(DatabaseOperationsBaseClass):
 
     def __init__(self, context: Connection) -> None:
         super().__init__(
-            "card_images", context, ["card_id", "image_data", "content_type"], ["card_id"]
+            "card_images",
+            context,
+            ["card_id", "image_data", "content_type"],
+            ["card_id"],
         )
 
     def get_by_card_id(self, card_id: int) -> tuple[bytes, str] | None:
