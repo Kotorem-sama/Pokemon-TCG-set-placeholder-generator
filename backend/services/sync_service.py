@@ -223,7 +223,6 @@ class SyncService:
             self.operations = own_database
             
             if not merge_success:
-                self.operations.database.context.rollback()
                 return False
 
         self.logger.info(f"Finished synchronising cards of set '{db_set.id}'!")
