@@ -97,7 +97,7 @@ class SyncService:
             )
 
         data = api_response.get("data")
-        if not isinstance(data, list):
+        if not isinstance(data, list) or not data:
             self.logger.warning("Invalid variant data for card '%s'", card_id)
             return False
 
@@ -202,6 +202,7 @@ class SyncService:
                 if not self.operations.variants.get_by_card_id(card["id"]):
                     if not await self.sync_card_variants(card["id"], card["rarity"]):
                         retry_count += 1
+                        self.operations.database.context.rollback()
                         continue
 
                 self.operations.database.context.commit()
