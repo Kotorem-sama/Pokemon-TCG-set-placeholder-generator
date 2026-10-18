@@ -12,7 +12,7 @@ class Database:
         self.logger = getLogger(__name__)
         self.context = self.__connect_db()
 
-    def __del__(self):
+    def delete_database(self):
         """Ensure the database connection is closed when the object is deleted. Then the database file is removed."""
         self.close_db()
         self.database_path.unlink(missing_ok=True)
