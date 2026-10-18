@@ -218,11 +218,13 @@ class SyncService:
 
         if within_sync_window:
             own_database.cards.delete({"set_id": db_set.id})
-            if not own_database.database.merge_db(self.operations.database):
-                own_database.database.context.rollback()
-
+            merge_success = own_database.database.merge_db(self.operations.database)
             self.operations.database.reset_db()
             self.operations = own_database
+            
+            if not merge_success:
+                self.operations.database.context.rollback()
+                return False
 
         self.logger.info(f"Finished synchronising cards of set '{db_set.id}'!")
         return True

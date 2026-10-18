@@ -171,6 +171,7 @@ class DatabaseOperationsBaseClass:
             self.logger.warning(
                 f"Failed to update '{update_entry}' in '{self.table_name}': {error}."
             )
+            self.context.rollback()
             return False
         finally:
             cursor.close()
